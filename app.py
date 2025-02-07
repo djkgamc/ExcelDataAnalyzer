@@ -64,8 +64,8 @@ def main():
 
     # File upload
     uploaded_file = st.file_uploader(
-        "Upload your menu file (TXT format)",
-        type=["txt"]
+        "Upload your menu file (CSV format)",
+        type=["csv", "txt"]
     )
 
     if uploaded_file:
@@ -129,7 +129,7 @@ def main():
 
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
-            st.write("Please ensure your file follows the expected format (B: Breakfast, L: Lunch, S: Snack).")
+            st.write("Please ensure your file follows the expected format.")
 
     # Help section
     with st.expander("Help & Instructions"):
@@ -137,15 +137,18 @@ def main():
         ### How to use this tool:
         1. Select the allergens you want to exclude using the sidebar
         2. Add custom substitution rules if needed
-        3. Upload your menu file (TXT format)
+        3. Upload your menu file (CSV format)
         4. Review the changes in the side-by-side view
         5. Export the modified menu in your preferred format
 
         ### Menu File Format:
-        Your menu file should be in text format with:
+        Your menu file should be in CSV format with:
         - One row per day
-        - Meals marked with B: (Breakfast), L: (Lunch), and S: (Snack)
-        - Different weeks separated by tabs
+        - Different weeks in separate columns
+        - Each cell containing:
+          - B: (Breakfast)
+          - L: (Lunch)
+          - S: (Snack)
 
         ### Supported Features:
         - Multiple allergen exclusions

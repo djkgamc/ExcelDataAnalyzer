@@ -1,3 +1,4 @@
+import io
 import pandas as pd
 from typing import Dict, List, Tuple
 
@@ -8,25 +9,21 @@ class MenuProcessor:
 
     def parse_menu(self) -> pd.DataFrame:
         """Parse the raw menu text into a structured DataFrame"""
-        # Split into rows (each row is a day)
-        rows = self.raw_content.strip().split('\n')
+        # Read CSV content with no headers
+        df = pd.read_csv(io.StringIO(self.raw_content), header=None)
 
-        # Process each row into a list of meals
+        # Process each cell to extract meals
         processed_data = []
-        current_day = []
 
-        for row in rows:
-            if row.strip():  # Skip empty rows
-                meals = {}
-                parts = row.split('\t')  # Split by tab to get different weeks
-
-                for week_menu in parts:
-                    day_meals = self._parse_day_meals(week_menu)
-                    processed_data.append(day_meals)
+        for _, row in df.iterrows():
+            for cell in row:
+                if pd.notna(cell):
+                    meals = self._parse_day_meals(cell)
+                    processed_data.append(meals)
 
         # Convert to DataFrame
-        df = pd.DataFrame(processed_data)
-        return df
+        result_df = pd.DataFrame(processed_data)
+        return result_df
 
     def _parse_day_meals(self, day_text: str) -> Dict[str, str]:
         """Parse a single day's meals into breakfast, lunch, and snack"""
@@ -37,21 +34,25 @@ class MenuProcessor:
         }
 
         current_meal = None
-        parts = day_text.split('"')[1].split('\n') if '"' in day_text else day_text.split('\n')
+        # Remove any quotes and split by newlines
+        lines = day_text.replace('"', '').split('\n')
 
-        for part in parts:
-            part = part.strip()
-            if part.startswith('B:'):
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.startswith('B:'):
                 current_meal = 'Breakfast'
-                meals[current_meal] = part[2:].strip()
-            elif part.startswith('L:'):
+                meals[current_meal] = line[2:].strip()
+            elif line.startswith('L:'):
                 current_meal = 'Lunch'
-                meals[current_meal] = part[2:].strip()
-            elif part.startswith('S:'):
+                meals[current_meal] = line[2:].strip()
+            elif line.startswith('S:'):
                 current_meal = 'Snack'
-                meals[current_meal] = part[2:].strip()
-            elif current_meal and part:
-                meals[current_meal] += ' ' + part.strip()
+                meals[current_meal] = line[2:].strip()
+            elif current_meal:
+                meals[current_meal] += ' ' + line.strip()
 
         return meals
 
