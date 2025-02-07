@@ -56,7 +56,7 @@ class MenuProcessor:
 
         return meals
 
-    def convert_menu(self, substitution_rules: Dict) -> Tuple[pd.DataFrame, List[str]]:
+    def convert_menu(self, substitution_rules: Dict[str, Dict[str, str]]) -> Tuple[pd.DataFrame, List[str]]:
         """Convert the menu using provided substitution rules"""
         modified_df = self.original_df.copy()
         changes = []
@@ -66,11 +66,10 @@ class MenuProcessor:
                 for idx, description in enumerate(modified_df[meal_type]):
                     if pd.notna(description):  # Check if the meal description exists
                         new_description = description
-                        for allergen, substitutions in substitution_rules.items():
-                            for original, replacement in substitutions.items():
-                                if original.lower() in new_description.lower():
-                                    new_description = new_description.replace(original, replacement)
-                                    changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
+                        for original, replacement in substitution_rules.items():
+                            if original.lower() in new_description.lower():
+                                new_description = new_description.replace(original, replacement)
+                                changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
                         modified_df.at[idx, meal_type] = new_description
 
         return modified_df, changes

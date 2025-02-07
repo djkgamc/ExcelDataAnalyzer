@@ -2,10 +2,11 @@ from typing import Dict, List
 from utils.database import get_db, SubstitutionRule
 from sqlalchemy.orm import Session
 
-def get_substitution_rules(allergens: List[str], db: Session = None) -> Dict:
+def get_substitution_rules(allergens: List[str], db: Session = None) -> Dict[str, str]:
     """
     Return substitution rules based on selected allergens from database,
-    falling back to default rules if none found
+    falling back to default rules if none found.
+    Returns a flattened dictionary mapping original items to replacements.
     """
     rules = {}
 
@@ -16,11 +17,8 @@ def get_substitution_rules(allergens: List[str], db: Session = None) -> Dict:
             ).all()
 
             if db_rules:
-                allergen_rules = {}
                 for rule in db_rules:
-                    allergen_rules[rule.original] = rule.replacement
-                rules.update(allergen_rules)
-                continue
+                    rules[rule.original] = rule.replacement
 
     # Default rules as fallback
     default_rules = {
@@ -64,7 +62,7 @@ def get_substitution_rules(allergens: List[str], db: Session = None) -> Dict:
 
     # Add any missing rules from defaults
     for allergen in allergens:
-        if allergen in default_rules and not rules.get(allergen):
+        if allergen in default_rules:
             rules.update(default_rules[allergen])
 
     return rules
