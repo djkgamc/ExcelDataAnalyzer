@@ -4,6 +4,7 @@ from utils.menu_processor import MenuProcessor
 from utils.substitutions import get_substitution_rules, add_substitution_rule
 from utils.database import init_db, get_db, SubstitutionRule
 from typing import Generator
+import io
 
 # Initialize database
 init_db()
@@ -35,7 +36,7 @@ def main():
     allergens = st.sidebar.multiselect(
         "Select allergens to exclude:",
         ["Gluten", "Dairy", "Nuts", "Eggs", "Soy"],
-        default=["Gluten"]
+        default=["Gluten", "Dairy"]
     )
 
     # Add custom substitution rules
@@ -63,20 +64,17 @@ def main():
 
     # File upload
     uploaded_file = st.file_uploader(
-        "Upload your menu file (CSV or Excel)",
-        type=["csv", "xlsx", "xls"]
+        "Upload your menu file (TXT format)",
+        type=["txt"]
     )
 
     if uploaded_file:
         try:
-            # Read the file
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
+            # Read the file content
+            content = uploaded_file.getvalue().decode('utf-8')
 
-            # Initialize processor
-            processor = MenuProcessor(df)
+            # Initialize processor with raw content
+            processor = MenuProcessor(content)
 
             # Get substitution rules with database access
             rules = get_substitution_rules(allergens, db)
@@ -89,7 +87,7 @@ def main():
 
             with col1:
                 st.subheader("Original Menu")
-                st.dataframe(df, use_container_width=True)
+                st.dataframe(processor.original_df, use_container_width=True)
 
             with col2:
                 st.subheader("Allergen-Free Menu")
@@ -117,17 +115,21 @@ def main():
 
             with col2:
                 if st.button("Export as Excel"):
-                    output = modified_df.to_excel(index=False)
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        modified_df.to_excel(writer, index=False)
+
+                    buffer.seek(0)
                     st.download_button(
                         label="Download Excel",
-                        data=output,
+                        data=buffer,
                         file_name="modified_menu.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
 
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
-            st.write("Please ensure your file follows the expected format.")
+            st.write("Please ensure your file follows the expected format (B: Breakfast, L: Lunch, S: Snack).")
 
     # Help section
     with st.expander("Help & Instructions"):
@@ -135,9 +137,15 @@ def main():
         ### How to use this tool:
         1. Select the allergens you want to exclude using the sidebar
         2. Add custom substitution rules if needed
-        3. Upload your menu file (CSV or Excel format)
+        3. Upload your menu file (TXT format)
         4. Review the changes in the side-by-side view
         5. Export the modified menu in your preferred format
+
+        ### Menu File Format:
+        Your menu file should be in text format with:
+        - One row per day
+        - Meals marked with B: (Breakfast), L: (Lunch), and S: (Snack)
+        - Different weeks separated by tabs
 
         ### Supported Features:
         - Multiple allergen exclusions
