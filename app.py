@@ -76,11 +76,11 @@ def main():
             # Initialize processor with raw content
             processor = MenuProcessor(content)
 
-            # Get substitution rules with database access
-            rules = get_substitution_rules(allergens, db)
+            # Get custom substitution rules with database access
+            custom_rules = get_substitution_rules(allergens, db)
 
-            # Process menu
-            modified_df, changes = processor.convert_menu(rules)
+            # Process menu with both custom rules and allergens for AI processing
+            modified_df, changes = processor.convert_menu(custom_rules, allergens)
 
             # Display original and modified menus side by side
             col1, col2 = st.columns(2)

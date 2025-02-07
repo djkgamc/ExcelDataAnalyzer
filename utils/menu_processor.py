@@ -1,6 +1,7 @@
 import io
 import pandas as pd
 from typing import Dict, List, Tuple
+from utils.substitutions import get_ai_substitutions_for_meal
 
 class MenuProcessor:
     def __init__(self, raw_content: str):
@@ -56,8 +57,8 @@ class MenuProcessor:
 
         return meals
 
-    def convert_menu(self, substitution_rules: Dict[str, Dict[str, str]]) -> Tuple[pd.DataFrame, List[str]]:
-        """Convert the menu using provided substitution rules"""
+    def convert_menu(self, custom_rules: Dict[str, str], allergens: List[str]) -> Tuple[pd.DataFrame, List[str]]:
+        """Convert the menu using custom rules and AI-powered substitutions"""
         modified_df = self.original_df.copy()
         changes = []
 
@@ -65,16 +66,27 @@ class MenuProcessor:
             if meal_type in modified_df.columns:
                 for idx, description in enumerate(modified_df[meal_type]):
                     if pd.notna(description):  # Check if the meal description exists
+                        # Get AI substitutions for this specific meal
+                        ai_substitutions = get_ai_substitutions_for_meal(
+                            description, 
+                            allergens, 
+                            custom_rules
+                        )
+
+                        # Combine custom rules with AI substitutions
+                        all_substitutions = {**custom_rules, **ai_substitutions}
+
+                        # Apply substitutions
                         new_description = description
-                        for original, replacement in substitution_rules.items():
+                        for original, replacement in all_substitutions.items():
                             if original.lower() in new_description.lower():
                                 new_description = new_description.replace(original, replacement)
                                 changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
+
                         modified_df.at[idx, meal_type] = new_description
 
         return modified_df, changes
 
     def highlight_changes(self, original: str, modified: str) -> str:
         """Highlight the differences between original and modified text"""
-        # This could be expanded to return HTML with highlighting
         return modified
