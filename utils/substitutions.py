@@ -1,10 +1,29 @@
 from typing import Dict, List
+from utils.database import get_db, SubstitutionRule
+from sqlalchemy.orm import Session
 
-def get_substitution_rules(allergens: List[str]) -> Dict:
+def get_substitution_rules(allergens: List[str], db: Session = None) -> Dict:
     """
-    Return substitution rules based on selected allergens
+    Return substitution rules based on selected allergens from database,
+    falling back to default rules if none found
     """
-    all_rules = {
+    rules = {}
+
+    if db:
+        for allergen in allergens:
+            db_rules = db.query(SubstitutionRule).filter(
+                SubstitutionRule.allergen == allergen
+            ).all()
+
+            if db_rules:
+                allergen_rules = {}
+                for rule in db_rules:
+                    allergen_rules[rule.original] = rule.replacement
+                rules.update(allergen_rules)
+                continue
+
+    # Default rules as fallback
+    default_rules = {
         "Gluten": {
             "bread": "gluten-free bread",
             "pasta": "gluten-free pasta",
@@ -43,9 +62,20 @@ def get_substitution_rules(allergens: List[str]) -> Dict:
         }
     }
 
-    selected_rules = {}
+    # Add any missing rules from defaults
     for allergen in allergens:
-        if allergen in all_rules:
-            selected_rules.update(all_rules[allergen])
+        if allergen in default_rules and not rules.get(allergen):
+            rules.update(default_rules[allergen])
 
-    return selected_rules
+    return rules
+
+def add_substitution_rule(allergen: str, original: str, replacement: str, db: Session):
+    """Add a new substitution rule to the database"""
+    rule = SubstitutionRule(
+        allergen=allergen,
+        original=original,
+        replacement=replacement
+    )
+    db.add(rule)
+    db.commit()
+    return rule
