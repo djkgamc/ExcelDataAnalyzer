@@ -193,6 +193,10 @@ class MenuProcessor:
                 if 'Dairy' in allergens:
                     dairy_containing_items = {
                         'milk': 'soy milk',
+                        'Milk': 'Soy milk',  # Capitalized version
+                        'MILK': 'SOY MILK',  # All caps version
+                        'Milk ': 'Soy milk ',  # With a trailing space
+                        'milk ': 'soy milk ',  # With a trailing space
                         'cheese': 'dairy-free cheese alternative',
                         'yogurt': 'dairy-free yogurt',
                         'american cheese': 'dairy-free cheese alternative',
@@ -214,13 +218,33 @@ class MenuProcessor:
                         'buttermilk biscuit': 'dairy-free biscuit'
                     }
                     
-                    for item, replacement in dairy_containing_items.items():
+                    # First, process milk replacements using word boundaries for precision
+                    milk_items = [item for item in dairy_containing_items.keys() if 'milk' in item.lower()]
+                    non_milk_items = [item for item in dairy_containing_items.keys() if 'milk' not in item.lower()]
+                    
+                    # Handle milk items with word boundaries to prevent partial word replacements
+                    for item in milk_items:
+                        if not any(item in k.lower() for k in all_substitutions.keys()):
+                            # Use word boundaries for milk to avoid replacing parts of words
+                            pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
+                            # Use finditer to find all occurrences
+                            for match in pattern.finditer(new_description):
+                                original_case = match.group(0)
+                                replacement = dairy_containing_items[item]
+                                # Use re.sub with count=1 to replace one at a time
+                                new_description = new_description[:match.start()] + replacement + new_description[match.end():]
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for dairy)")
+                                print(f"Made special case dairy substitution: '{original_case}' -> '{replacement}'")
+                    
+                    # Process other dairy items normally
+                    for item in non_milk_items:
                         if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
                             # Use a regular expression to match with case insensitivity but preserve case in output
                             pattern = re.compile(re.escape(item), re.IGNORECASE)
                             match = pattern.search(new_description)
                             if match:
                                 original_case = match.group(0)
+                                replacement = dairy_containing_items[item]
                                 new_description = new_description.replace(original_case, replacement)
                                 changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for dairy)")
                                 print(f"Made special case dairy substitution: '{original_case}' -> '{replacement}'")
