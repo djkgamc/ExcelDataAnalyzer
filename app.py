@@ -53,12 +53,20 @@ def main():
             else:
                 st.error("Please fill in both original and replacement ingredients.")
 
-    # View existing custom rules
+    # View existing custom rules with delete option
     st.sidebar.subheader("Custom Rules")
     custom_rules = db.query(SubstitutionRule).all()
     if custom_rules:
         for rule in custom_rules:
-            st.sidebar.text(f"{rule.allergen}: {rule.original} → {rule.replacement}")
+            col1, col2 = st.sidebar.columns([4, 1])
+            with col1:
+                st.text(f"{rule.allergen}: {rule.original} → {rule.replacement}")
+            with col2:
+                if st.button("🗑️", key=f"delete_{rule.id}"):
+                    from utils.substitutions import delete_substitution_rule
+                    if delete_substitution_rule(rule.id, db):
+                        st.success("Rule deleted!")
+                        st.experimental_rerun()
     else:
         st.sidebar.text("No custom rules added yet.")
 

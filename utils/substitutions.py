@@ -40,3 +40,12 @@ def add_substitution_rule(allergen: str, original: str, replacement: str, db: Se
     db.add(rule)
     db.commit()
     return rule
+
+def delete_substitution_rule(rule_id: int, db: Session) -> bool:
+    """Delete a substitution rule from the database"""
+    rule = db.query(SubstitutionRule).filter(SubstitutionRule.id == rule_id).first()
+    if rule:
+        db.delete(rule)
+        db.commit()
+        return True
+    return False
