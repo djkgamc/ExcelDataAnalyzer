@@ -58,33 +58,49 @@ class MenuProcessor:
         return meals
 
     def convert_menu(self, custom_rules: Dict[str, str], allergens: List[str]) -> Tuple[pd.DataFrame, List[str]]:
-        """Convert the menu using custom rules and AI-powered substitutions"""
+        """Convert the menu using custom rules and AI-powered substitutions with batch processing"""
+        from utils.openai_service import get_batch_ai_substitutions
+        
         modified_df = self.original_df.copy()
         changes = []
-
+        
+        # Collect all meal descriptions to batch process
+        all_meal_descriptions = []
+        meal_indices = []  # Store (meal_type, idx) for each description
+        
         for meal_type in ['Breakfast', 'Lunch', 'Snack']:
             if meal_type in modified_df.columns:
                 for idx, description in enumerate(modified_df[meal_type]):
                     if pd.notna(description):  # Check if the meal description exists
-                        # Get AI substitutions for this specific meal
-                        ai_substitutions = get_ai_substitutions_for_meal(
-                            description, 
-                            allergens, 
-                            custom_rules
-                        )
-
-                        # Combine custom rules with AI substitutions
-                        all_substitutions = {**custom_rules, **ai_substitutions}
-
-                        # Apply substitutions
-                        new_description = description
-                        for original, replacement in all_substitutions.items():
-                            if original.lower() in new_description.lower():
-                                new_description = new_description.replace(original, replacement)
-                                changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
-
-                        modified_df.at[idx, meal_type] = new_description
-
+                        all_meal_descriptions.append(description)
+                        meal_indices.append((meal_type, idx))
+        
+        # Batch process all meals to get substitutions
+        if all_meal_descriptions:
+            # Get substitutions for all meals in one API call
+            all_substitutions_list = get_batch_ai_substitutions(
+                all_meal_descriptions,
+                allergens,
+                custom_rules
+            )
+            
+            # Apply substitutions to each meal
+            for i, (meal_type, idx) in enumerate(meal_indices):
+                description = all_meal_descriptions[i]
+                ai_substitutions = all_substitutions_list[i] if i < len(all_substitutions_list) else {}
+                
+                # Combine custom rules with AI substitutions, with AI taking precedence
+                all_substitutions = {**custom_rules, **ai_substitutions}
+                
+                # Apply substitutions
+                new_description = description
+                for original, replacement in all_substitutions.items():
+                    if original.lower() in new_description.lower():
+                        new_description = new_description.replace(original, replacement)
+                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
+                
+                modified_df.at[idx, meal_type] = new_description
+                
         return modified_df, changes
 
     def highlight_changes(self, original: str, modified: str) -> str:
