@@ -123,20 +123,106 @@ class MenuProcessor:
                     else:
                         print(f"No match found for '{original}'")
                         
-                # Try a different approach for partial matching
-                if '1/2 boiled egg' in description and not any('1/2 boiled egg' in k for k in all_substitutions.keys()):
-                    # Special case for egg substitution that might not be matching exactly
-                    replacement = "1/2 scrambled tofu (egg-free alternative)"
-                    new_description = new_description.replace('1/2 boiled egg', replacement)
-                    changes.append(f"Changed '1/2 boiled egg' to '{replacement}' in {meal_type} (special case)")
-                    print(f"Made special case substitution: '1/2 boiled egg' -> '{replacement}'")
+                # Apply special case handling for common items containing allergens
+                if 'Egg Products' in allergens:
+                    egg_containing_items = {
+                        '1/2 boiled egg': '1/2 scrambled tofu (egg-free alternative)',
+                        'enriched corn muffin': 'egg-free corn muffin (made with applesauce)',
+                        'enriched blueberry muffin': 'egg-free blueberry muffin (made with applesauce)',
+                        'enriched banana bread': 'egg-free banana bread (made with applesauce)',
+                        'enriched cinnamon raisin bread': 'egg-free cinnamon raisin bread',
+                        'pancake': 'egg-free vegan pancake',
+                        'waffle': 'egg-free vegan waffle',
+                        'muffin': 'egg-free muffin (made with applesauce)'
+                    }
+                    
+                    for item, replacement in egg_containing_items.items():
+                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
+                            # Use a regular expression to match with case insensitivity but preserve case in output
+                            pattern = re.compile(re.escape(item), re.IGNORECASE)
+                            match = pattern.search(new_description)
+                            if match:
+                                original_case = match.group(0)
+                                new_description = new_description.replace(original_case, replacement)
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg products)")
+                                print(f"Made special case egg substitution: '{original_case}' -> '{replacement}'")
                 
-                if '3 fish sticks with tartar sauc' in description and not any('fish' in k.lower() for k in all_substitutions.keys()):
-                    # Special case for fish substitution
-                    replacement = "3 plant-based fish-free sticks with vegan tartar sauce"
-                    new_description = new_description.replace('3 fish sticks with tartar sauc', replacement)
-                    changes.append(f"Changed '3 fish sticks with tartar sauc' to '{replacement}' in {meal_type} (special case)")
-                    print(f"Made special case substitution: '3 fish sticks with tartar sauc' -> '{replacement}'")
+                if 'Fish' in allergens:
+                    fish_containing_items = {
+                        '3 fish sticks with tartar sauc': '3 plant-based fish-free sticks with vegan tartar sauce',
+                        'tuna fish': 'chickpea "tuna" salad',
+                        'fish sticks': 'plant-based fish-free sticks',
+                        'tuna': 'chickpea "tuna" salad'
+                    }
+                    
+                    for item, replacement in fish_containing_items.items():
+                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
+                            # Use a regular expression to match with case insensitivity but preserve case in output
+                            pattern = re.compile(re.escape(item), re.IGNORECASE)
+                            match = pattern.search(new_description)
+                            if match:
+                                original_case = match.group(0)
+                                new_description = new_description.replace(original_case, replacement)
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for fish)")
+                                print(f"Made special case fish substitution: '{original_case}' -> '{replacement}'")
+                
+                if 'Dairy' in allergens:
+                    dairy_containing_items = {
+                        'milk': 'soy milk',
+                        'cheese': 'dairy-free cheese alternative',
+                        'yogurt': 'dairy-free yogurt',
+                        'american cheese': 'dairy-free cheese alternative',
+                        'cheddar': 'dairy-free cheddar alternative',
+                        'mozzarella': 'dairy-free mozzarella alternative',
+                        'ricotta': 'dairy-free ricotta alternative',
+                        'butter': 'plant-based butter',
+                        'cream cheese': 'dairy-free cream cheese',
+                        'mac and cheese': 'dairy-free mac and cheese',
+                        'macaroni & cheese': 'dairy-free macaroni & cheese',
+                        'macaroni and cheese': 'dairy-free macaroni and cheese',
+                        'ice cream': 'dairy-free ice cream'
+                    }
+                    
+                    for item, replacement in dairy_containing_items.items():
+                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
+                            # Use a regular expression to match with case insensitivity but preserve case in output
+                            pattern = re.compile(re.escape(item), re.IGNORECASE)
+                            match = pattern.search(new_description)
+                            if match:
+                                original_case = match.group(0)
+                                new_description = new_description.replace(original_case, replacement)
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for dairy)")
+                                print(f"Made special case dairy substitution: '{original_case}' -> '{replacement}'")
+                
+                if 'Gluten' in allergens:
+                    gluten_containing_items = {
+                        'cereal': 'gluten-free cereal',
+                        'bread': 'gluten-free bread',
+                        'roll': 'gluten-free roll',
+                        'pasta': 'gluten-free pasta',
+                        'spaghetti': 'gluten-free spaghetti',
+                        'macaroni': 'gluten-free macaroni',
+                        'crackers': 'gluten-free crackers',
+                        'bagel': 'gluten-free bagel',
+                        'biscuit': 'gluten-free biscuit',
+                        'muffin': 'gluten-free muffin',
+                        'pretzel': 'gluten-free pretzel',
+                        'waffle': 'gluten-free waffle',
+                        'pancake': 'gluten-free pancake',
+                        'bread': 'gluten-free bread',
+                        'wgr': 'gluten-free'
+                    }
+                    
+                    for item, replacement in gluten_containing_items.items():
+                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
+                            # Use a regular expression to match with case insensitivity but preserve case in output
+                            pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
+                            match = pattern.search(new_description)
+                            if match:
+                                original_case = match.group(0)
+                                new_description = new_description.replace(original_case, replacement)
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for gluten)")
+                                print(f"Made special case gluten substitution: '{original_case}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
