@@ -3,6 +3,7 @@ import pandas as pd
 from utils.menu_processor import MenuProcessor
 from utils.substitutions import get_substitution_rules, add_substitution_rule
 from utils.database import init_db, get_db, SubstitutionRule
+from utils.confetti import show_confetti
 from typing import Generator
 import io
 
@@ -50,6 +51,7 @@ def main():
             if original and replacement:
                 add_substitution_rule(allergen, original, replacement, db)
                 st.success("Rule added successfully!")
+                show_confetti()
             else:
                 st.error("Please fill in both original and replacement ingredients.")
 
@@ -89,6 +91,10 @@ def main():
 
             # Process menu with both custom rules and allergens for AI processing
             modified_df, changes = processor.convert_menu(custom_rules, allergens)
+            
+            # Show confetti for successful processing
+            if changes:
+                show_confetti()
 
             # Display original and modified menus side by side
             col1, col2 = st.columns(2)
@@ -114,11 +120,12 @@ def main():
             with col1:
                 if st.button("Export as CSV"):
                     csv = modified_df.to_csv(index=False)
-                    st.download_button(
+                    download_button = st.download_button(
                         label="Download CSV",
                         data=csv,
                         file_name="modified_menu.csv",
-                        mime="text/csv"
+                        mime="text/csv",
+                        on_click=show_confetti
                     )
 
             with col2:
@@ -132,7 +139,8 @@ def main():
                         label="Download Excel",
                         data=buffer,
                         file_name="modified_menu.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        on_click=show_confetti
                     )
 
         except Exception as e:
