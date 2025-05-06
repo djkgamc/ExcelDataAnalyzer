@@ -105,23 +105,50 @@ class MenuProcessor:
                 new_description = description
                 print(f"All substitutions: {all_substitutions}")
                 
+                # Create a list of temporary markers for replacements
+                replacements_to_apply = []
+                
+                # First pass: identify all replacements needed without modifying the string
                 for original, replacement in all_substitutions.items():
                     print(f"Checking for '{original}' in '{new_description}'")
-                    # Simple direct string replacement
+                    
+                    # Skip already processed 'milk' substitutions to prevent double soy
+                    if original.lower() == 'milk' and 'soy milk' in new_description.lower():
+                        print(f"Skipping '{original}' substitution as we already have 'soy milk' in the description")
+                        continue
+                        
+                    # Simple direct string replacement - only detect matches, don't replace yet
                     if original in new_description:
                         # Found exact match
-                        new_description = new_description.replace(original, replacement)
-                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
-                        print(f"Made substitution: '{original}' -> '{replacement}'")
+                        marker = f"__REPL_{len(replacements_to_apply)}__"
+                        replacements_to_apply.append((original, replacement, marker, "exact"))
+                        print(f"Found match for '{original}' -> '{replacement}'")
                     # Case-insensitive search as fallback
                     elif original.lower() in new_description.lower():
                         # Find the actual case-preserved version in the text
                         pattern = re.compile(re.escape(original), re.IGNORECASE)
-                        new_description = pattern.sub(replacement, new_description)
-                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (case-insensitive)")
-                        print(f"Made case-insensitive substitution: '{original}' -> '{replacement}'")
+                        matches = list(pattern.finditer(new_description))
+                        for match in matches:
+                            matched_text = match.group(0)
+                            marker = f"__REPL_{len(replacements_to_apply)}__"
+                            replacements_to_apply.append((matched_text, replacement, marker, "case-insensitive"))
+                            print(f"Found case-insensitive match for '{original}' as '{matched_text}' -> '{replacement}'")
                     else:
                         print(f"No match found for '{original}'")
+                
+                # Second pass: replace original text with unique markers
+                temp_description = new_description
+                for original, _, marker, _ in replacements_to_apply:
+                    temp_description = temp_description.replace(original, marker)
+                
+                # Third pass: replace markers with final replacements
+                for _, replacement, marker, match_type in replacements_to_apply:
+                    temp_description = temp_description.replace(marker, replacement)
+                    changes.append(f"Changed to '{replacement}' in {meal_type} ({match_type})")
+                    print(f"Made {match_type} substitution -> '{replacement}'")
+                
+                # Apply the final clean description
+                new_description = temp_description
                         
                 # Apply special case handling for common items containing allergens
                 # Check first if both dairy and eggs are being removed
