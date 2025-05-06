@@ -48,4 +48,5 @@ def show_confetti():
     """
     
     # Display using html component
-    st.components.v1.html(confetti_code, height=0)
+    # Set a small height to ensure the component is rendered but doesn't take up much space
+    st.components.v1.html(confetti_code, height=5)
