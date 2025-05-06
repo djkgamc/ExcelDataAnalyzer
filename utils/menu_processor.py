@@ -96,11 +96,56 @@ class MenuProcessor:
                 # Apply substitutions
                 new_description = description
                 for original, replacement in all_substitutions.items():
-                    # Case insensitive search
-                    original_lower = original.lower()
+                    # Extract key terms for fuzzy matching (for items like "fish sticks" or partial words like "tartar sauc")
+                    original_terms = original.lower().split()
                     description_lower = new_description.lower()
                     
-                    # Look for exact matches or substrings surrounded by word boundaries
+                    # Check for partial matches of the original ingredient
+                    # For multi-word ingredients (like "fish sticks"), we want to match if all key words appear near each other
+                    # For single words, we want to match if a substantial part of the word is present
+                    if len(original_terms) > 1:  # Multi-word term
+                        # Check if all terms appear in the description near each other
+                        all_terms_present = all(term in description_lower for term in original_terms)
+                        if all_terms_present:
+                            # Find the positions of each term
+                            positions = [description_lower.find(term) for term in original_terms if term in description_lower]
+                            # Check if terms are within a reasonable distance (e.g., 15 characters) of each other
+                            if positions and max(positions) - min(positions) < 20:  # Adjust distance as needed
+                                # Find the approximate match in the original text
+                                # Extract the surrounding context
+                                start_pos = max(0, min(positions) - 5)
+                                end_pos = min(len(description_lower), max(positions) + len(original_terms[-1]) + 5)
+                                context = description_lower[start_pos:end_pos]
+                                
+                                # Find words containing our terms in the context
+                                for word in re.findall(r'\w+\s*\w*\s*\w*', context):
+                                    if all(term in word for term in original_terms):
+                                        # Match found - now substitute
+                                        # Use a fuzzy pattern that will match the words and some surrounding context
+                                        pattern = re.compile(re.escape(word), re.IGNORECASE)
+                                        new_description = pattern.sub(replacement, new_description)
+                                        changes.append(f"Changed '{word}' to '{replacement}' in {meal_type}")
+                                        break
+                    else:  # Single word term
+                        # Special case for ingredients with typos or truncated words (like "tartar sauc" vs "tartar sauce")
+                        # Look for words that start with the same characters (at least 70% of the word)
+                        min_match_length = max(3, int(len(original_terms[0]) * 0.7))  # At least 3 chars or 70% of the word
+                        
+                        # Find all words in the description
+                        words_in_description = re.findall(r'\b\w+\b', description_lower)
+                        for word in words_in_description:
+                            # Check if the word is a substantial match to the original term
+                            original_term = original_terms[0]
+                            if (original_term.startswith(word) and len(word) >= min_match_length) or \
+                               (word.startswith(original_term) and len(original_term) >= min_match_length) or \
+                               (len(original_term) > 4 and original_term[:-1] == word):  # Handle truncated words
+                                # Replace the matched word
+                                pattern = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+                                new_description = pattern.sub(replacement, new_description)
+                                changes.append(f"Changed '{word}' to '{replacement}' in {meal_type} (fuzzy match for '{original}')")
+                        
+                    # Standard exact match approach as a fallback
+                    original_lower = original.lower()
                     if (original_lower in description_lower and  # Simple substring check
                         (original_lower == description_lower or  # Exact match
                          f" {original_lower} " in f" {description_lower} " or  # Surrounded by spaces
