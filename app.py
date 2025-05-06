@@ -66,7 +66,7 @@ def main():
                     from utils.substitutions import delete_substitution_rule
                     if delete_substitution_rule(rule.id, db):
                         st.success("Rule deleted!")
-                        st.experimental_rerun()
+                        st.rerun()
     else:
         st.sidebar.text("No custom rules added yet.")
 
