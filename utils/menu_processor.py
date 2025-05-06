@@ -124,7 +124,31 @@ class MenuProcessor:
                         print(f"No match found for '{original}'")
                         
                 # Apply special case handling for common items containing allergens
-                if 'Egg Products' in allergens:
+                # Check first if both dairy and eggs are being removed
+                if 'Egg Products' in allergens and 'Dairy' in allergens:
+                    combo_allergen_items = {
+                        '1/2 boiled egg': '1/2 scrambled tofu (egg-free, dairy-free alternative)',
+                        'enriched corn muffin': 'vegan corn muffin (egg-free and dairy-free, made with applesauce)',
+                        'enriched blueberry muffin': 'vegan blueberry muffin (egg-free and dairy-free, made with applesauce)',
+                        'enriched banana bread': 'vegan banana bread (egg-free and dairy-free, made with applesauce)',
+                        'enriched cinnamon raisin bread': 'vegan cinnamon raisin bread (egg-free and dairy-free)',
+                        'pancake': 'vegan pancake (egg-free and dairy-free)',
+                        'waffle': 'vegan waffle (egg-free and dairy-free)',
+                        'muffin': 'vegan muffin (egg-free and dairy-free, made with applesauce)',
+                        'buttermilk biscuit': 'vegan biscuit (egg-free and dairy-free)'
+                    }
+                    
+                    for item, replacement in combo_allergen_items.items():
+                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
+                            pattern = re.compile(re.escape(item), re.IGNORECASE)
+                            match = pattern.search(new_description)
+                            if match:
+                                original_case = match.group(0)
+                                new_description = new_description.replace(original_case, replacement)
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg+dairy)")
+                                print(f"Made special case combo substitution: '{original_case}' -> '{replacement}'")
+                
+                elif 'Egg Products' in allergens:
                     egg_containing_items = {
                         '1/2 boiled egg': '1/2 scrambled tofu (egg-free alternative)',
                         'enriched corn muffin': 'egg-free corn muffin (made with applesauce)',
@@ -180,7 +204,14 @@ class MenuProcessor:
                         'mac and cheese': 'dairy-free mac and cheese',
                         'macaroni & cheese': 'dairy-free macaroni & cheese',
                         'macaroni and cheese': 'dairy-free macaroni and cheese',
-                        'ice cream': 'dairy-free ice cream'
+                        'ice cream': 'dairy-free ice cream',
+                        # Add dairy substitutions for baked goods
+                        'muffin': 'dairy-free muffin',
+                        'corn muffin': 'dairy-free corn muffin',
+                        'blueberry muffin': 'dairy-free blueberry muffin',
+                        'pancake': 'dairy-free vegan pancake',
+                        'waffle': 'dairy-free vegan waffle',
+                        'buttermilk biscuit': 'dairy-free biscuit'
                     }
                     
                     for item, replacement in dairy_containing_items.items():
