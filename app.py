@@ -35,14 +35,14 @@ def main():
     # Allergen selection
     allergens = st.sidebar.multiselect(
         "Select allergens to exclude:",
-        ["Gluten", "Dairy", "Nuts", "Eggs", "Soy"],
+        ["Gluten", "Dairy", "Nuts", "Egg Products", "Soy", "Fish"],
         default=["Gluten", "Dairy"]
     )
 
     # Add custom substitution rules
     st.sidebar.subheader("Add Custom Substitution")
     with st.sidebar.form("new_rule"):
-        allergen = st.selectbox("Allergen", ["Gluten", "Dairy", "Nuts", "Eggs", "Soy"])
+        allergen = st.selectbox("Allergen", ["Gluten", "Dairy", "Nuts", "Egg Products", "Soy", "Fish"])
         original = st.text_input("Original ingredient")
         replacement = st.text_input("Replacement ingredient")
 
