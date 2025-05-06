@@ -1,4 +1,5 @@
 import io
+import re
 import pandas as pd
 from typing import Dict, List, Tuple
 from utils.substitutions import get_ai_substitutions_for_meal
@@ -95,8 +96,21 @@ class MenuProcessor:
                 # Apply substitutions
                 new_description = description
                 for original, replacement in all_substitutions.items():
-                    if original.lower() in new_description.lower():
-                        new_description = new_description.replace(original, replacement)
+                    # Case insensitive search
+                    original_lower = original.lower()
+                    description_lower = new_description.lower()
+                    
+                    # Look for exact matches or substrings surrounded by word boundaries
+                    if (original_lower in description_lower and  # Simple substring check
+                        (original_lower == description_lower or  # Exact match
+                         f" {original_lower} " in f" {description_lower} " or  # Surrounded by spaces
+                         description_lower.startswith(f"{original_lower} ") or  # At start with space after
+                         description_lower.endswith(f" {original_lower}") or  # At end with space before
+                         original_lower in description_lower.split(', '))):  # In a comma-separated list
+                        
+                        # Perform a case-insensitive replacement
+                        pattern = re.compile(re.escape(original), re.IGNORECASE)
+                        new_description = pattern.sub(replacement, new_description)
                         changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
                 
                 modified_df.at[idx, meal_type] = new_description
