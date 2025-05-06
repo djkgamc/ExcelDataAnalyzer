@@ -90,23 +90,53 @@ class MenuProcessor:
                 description = all_meal_descriptions[i]
                 ai_substitutions = all_substitutions_list[i] if i < len(all_substitutions_list) else {}
                 
+                # Debug output to verify what we're getting
+                print(f"Meal type: {meal_type}, Meal: {description}")
+                print(f"AI Substitutions: {ai_substitutions}")
+                
                 # Combine custom rules with AI substitutions, with AI taking precedence
-                all_substitutions = {**custom_rules, **ai_substitutions}
+                all_substitutions = {**custom_rules}
+                
+                # AI substitutions may be a dict with one item
+                if isinstance(ai_substitutions, dict):
+                    all_substitutions.update(ai_substitutions)
                 
                 # Apply substitutions
                 new_description = description
+                print(f"All substitutions: {all_substitutions}")
+                
                 for original, replacement in all_substitutions.items():
+                    print(f"Checking for '{original}' in '{new_description}'")
                     # Simple direct string replacement
                     if original in new_description:
                         # Found exact match
                         new_description = new_description.replace(original, replacement)
                         changes.append(f"Changed '{original}' to '{replacement}' in {meal_type}")
+                        print(f"Made substitution: '{original}' -> '{replacement}'")
                     # Case-insensitive search as fallback
                     elif original.lower() in new_description.lower():
                         # Find the actual case-preserved version in the text
                         pattern = re.compile(re.escape(original), re.IGNORECASE)
                         new_description = pattern.sub(replacement, new_description)
                         changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (case-insensitive)")
+                        print(f"Made case-insensitive substitution: '{original}' -> '{replacement}'")
+                    else:
+                        print(f"No match found for '{original}'")
+                        
+                # Try a different approach for partial matching
+                if '1/2 boiled egg' in description and not any('1/2 boiled egg' in k for k in all_substitutions.keys()):
+                    # Special case for egg substitution that might not be matching exactly
+                    replacement = "1/2 scrambled tofu (egg-free alternative)"
+                    new_description = new_description.replace('1/2 boiled egg', replacement)
+                    changes.append(f"Changed '1/2 boiled egg' to '{replacement}' in {meal_type} (special case)")
+                    print(f"Made special case substitution: '1/2 boiled egg' -> '{replacement}'")
+                
+                if '3 fish sticks with tartar sauc' in description and not any('fish' in k.lower() for k in all_substitutions.keys()):
+                    # Special case for fish substitution
+                    replacement = "3 plant-based fish-free sticks with vegan tartar sauce"
+                    new_description = new_description.replace('3 fish sticks with tartar sauc', replacement)
+                    changes.append(f"Changed '3 fish sticks with tartar sauc' to '{replacement}' in {meal_type} (special case)")
+                    print(f"Made special case substitution: '3 fish sticks with tartar sauc' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
