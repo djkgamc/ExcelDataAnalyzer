@@ -119,6 +119,17 @@ class MenuProcessor:
                         flags=re.IGNORECASE
                     )
                 
+                # Special case for cheeseburger
+                if "cheeseburger" in new_description.lower():
+                    # Create a custom replacement for cheeseburger
+                    print("Found cheeseburger - applying special substitution")
+                    new_description = re.sub(
+                        r'\b[Cc]heeseburger\b.*?\b', 
+                        'burger-no cheese ', 
+                        new_description,
+                        flags=re.IGNORECASE
+                    )
+                
                 # First pass: identify all replacements needed without modifying the string
                 for original, replacement in all_substitutions.items():
                     print(f"Checking for '{original}' in '{new_description}'")
@@ -333,7 +344,7 @@ class MenuProcessor:
                         'raisin bread': 'gluten-free raisin bread',
                         'banana bread': 'gluten-free banana bread',
                         'dinner roll': 'gluten-free dinner roll',
-                        'goldfish crackers': 'gluten-free crackers',
+                        'goldfish crackers': 'a fruit',
                         'graham crackers': 'gluten-free graham crackers',
                         'animal crackers': 'gluten-free animal crackers',
                         'Ritz Cr': 'gluten-free crackers',
