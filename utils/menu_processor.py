@@ -343,7 +343,7 @@ class MenuProcessor:
                         'quesadilla': 'gluten-free quesadilla',
                         'French toast': 'gluten-free French toast',
                         'dinner roll': 'gluten-free dinner roll',
-                        'goldfish crackers': 'a fruit',
+                        'goldfish crackers': 'graham crackers',
                         'graham crackers': 'gluten-free graham crackers',
                         'animal crackers': 'gluten-free animal crackers',
                         'Ritz Cr': 'gluten-free crackers',
