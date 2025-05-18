@@ -282,7 +282,6 @@ class MenuProcessor:
                 
                 if 'Gluten' in allergens:
                     gluten_containing_items = {
-                        'cereal': 'gluten-free cereal',
                         'whole wheat': 'gluten-free bread',
                         'wheat': 'gluten-free alternative',
                         'bread': 'gluten-free bread',
