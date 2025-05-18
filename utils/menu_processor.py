@@ -252,7 +252,8 @@ class MenuProcessor:
                         'Milk ': 'Oat milk ',  # With a trailing space
                         'milk ': 'oat milk ',  # With a trailing space
                         'cheese': 'jam',
-                        'yogurt': 'dairy-free yogurt',
+                        'yogurt': 'oat milk',
+                        'fruit yogurt': 'oat milk',
                         'american cheese': 'jam',
                         'cheddar': 'jam',
                         'mozzarella': 'jam',
