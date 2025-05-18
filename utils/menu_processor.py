@@ -246,11 +246,11 @@ class MenuProcessor:
                 
                 if 'Dairy' in allergens:
                     dairy_containing_items = {
-                        'milk': 'soy milk',
-                        'Milk': 'Soy milk',  # Capitalized version
-                        'MILK': 'SOY MILK',  # All caps version
-                        'Milk ': 'Soy milk ',  # With a trailing space
-                        'milk ': 'soy milk ',  # With a trailing space
+                        'milk': 'oat milk',
+                        'Milk': 'Oat milk',  # Capitalized version
+                        'MILK': 'OAT MILK',  # All caps version
+                        'Milk ': 'Oat milk ',  # With a trailing space
+                        'milk ': 'oat milk ',  # With a trailing space
                         'cheese': 'jam',
                         'yogurt': 'dairy-free yogurt',
                         'american cheese': 'jam',
