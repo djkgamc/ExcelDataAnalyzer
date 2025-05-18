@@ -279,10 +279,13 @@ class MenuProcessor:
                 if 'Gluten' in allergens:
                     gluten_containing_items = {
                         'cereal': 'gluten-free cereal',
+                        'whole wheat': 'gluten-free bread',
+                        'wheat': 'gluten-free alternative',
                         'bread': 'gluten-free bread',
                         'roll': 'gluten-free roll',
                         'pasta': 'gluten-free pasta',
                         'spaghetti': 'gluten-free spaghetti',
+                        'shells': 'gluten-free shells',
                         'macaroni': 'gluten-free macaroni',
                         'crackers': 'gluten-free crackers',
                         'bagel': 'gluten-free bagel',
@@ -291,20 +294,61 @@ class MenuProcessor:
                         'pretzel': 'gluten-free pretzel',
                         'waffle': 'gluten-free waffle',
                         'pancake': 'gluten-free pancake',
-                        'bread': 'gluten-free bread',
-                        'wgr': 'gluten-free'
+                        'toast': 'gluten-free toast',
+                        'cracker': 'gluten-free cracker',
+                        'quesadilla': 'gluten-free quesadilla',
+                        'French toast': 'gluten-free French toast',
+                        'raisin bread': 'gluten-free raisin bread',
+                        'banana bread': 'gluten-free banana bread',
+                        'dinner roll': 'gluten-free dinner roll',
+                        'goldfish crackers': 'gluten-free crackers',
+                        'graham crackers': 'gluten-free graham crackers',
+                        'animal crackers': 'gluten-free animal crackers',
+                        'Ritz Cr': 'gluten-free crackers',
+                        'Ritz crackers': 'gluten-free crackers',
+                        'WGR': 'gluten-free',
+                        'wgr': 'gluten-free',
+                        'enriched': 'gluten-free'
                     }
                     
+                    # First pass - use marker-based replacement to avoid nested replacements
+                    replacements_to_apply = []
+                    
                     for item, replacement in gluten_containing_items.items():
-                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
-                            # Use a regular expression to match with case insensitivity but preserve case in output
+                        if item.lower() in new_description.lower() and not any(item.lower() in k.lower() for k in all_substitutions.keys()):
+                            # Use regex with word boundaries to match whole words
                             pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
-                            match = pattern.search(new_description)
-                            if match:
+                            
+                            # Find all matches
+                            for match in pattern.finditer(new_description):
                                 original_case = match.group(0)
-                                new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for gluten)")
-                                print(f"Made special case gluten substitution: '{original_case}' -> '{replacement}'")
+                                marker = f"__GLUTEN_{len(replacements_to_apply)}__"
+                                replacements_to_apply.append((original_case, replacement, marker))
+                                print(f"Found gluten match: '{original_case}' -> '{replacement}'")
+                    
+                    # Apply markers
+                    for original, _, marker in replacements_to_apply:
+                        new_description = new_description.replace(original, marker)
+                    
+                    # Replace markers with substitutions
+                    for _, replacement, marker in replacements_to_apply:
+                        new_description = new_description.replace(marker, replacement)
+                        changes.append(f"Changed to '{replacement}' (special case for gluten)")
+                        print(f"Made special case gluten substitution -> '{replacement}'")
+                        
+                    # Also handle special cases with non-word-boundary matching like "WGR"
+                    special_gluten_items = {
+                        'WGR ': 'Gluten-free ',
+                        'WGR.': 'Gluten-free.',
+                        'WGR,': 'Gluten-free,'
+                    }
+                    
+                    for item, replacement in special_gluten_items.items():
+                        if item in new_description:
+                            # Direct replacement for abbreviations
+                            new_description = new_description.replace(item, replacement)
+                            changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
+                            print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
