@@ -245,36 +245,40 @@ class MenuProcessor:
                         'buttermilk biscuit': 'dairy-free biscuit'
                     }
                     
-                    # First, process milk replacements using word boundaries for precision
-                    milk_items = [item for item in dairy_containing_items.keys() if 'milk' in item.lower()]
-                    non_milk_items = [item for item in dairy_containing_items.keys() if 'milk' not in item.lower()]
+                    # Use the same marker-based approach for dairy items
+                    dairy_replacements_to_apply = []
                     
-                    # Handle milk items with word boundaries to prevent partial word replacements
-                    for item in milk_items:
-                        if not any(item in k.lower() for k in all_substitutions.keys()):
-                            # Use word boundaries for milk to avoid replacing parts of words
+                    # First, detect all dairy items that need replacement
+                    for item, replacement in dairy_containing_items.items():
+                        # Skip if we already have soy milk in the description
+                        if 'milk' in item.lower() and ('soy milk' in new_description.lower() or 'Soy milk' in new_description or 'SOY MILK' in new_description):
+                            continue
+                            
+                        # Only process this item if it's not already in the custom rules
+                        if not any(item.lower() in k.lower() for k in all_substitutions.keys()):
+                            # Use word boundaries for matching
                             pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
-                            # Use finditer to find all occurrences
+                            
+                            # Find all matches
                             for match in pattern.finditer(new_description):
                                 original_case = match.group(0)
-                                replacement = dairy_containing_items[item]
-                                # Use re.sub with count=1 to replace one at a time
-                                new_description = new_description[:match.start()] + replacement + new_description[match.end():]
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for dairy)")
-                                print(f"Made special case dairy substitution: '{original_case}' -> '{replacement}'")
+                                marker = f"__DAIRY_{len(dairy_replacements_to_apply)}__"
+                                dairy_replacements_to_apply.append((original_case, replacement, marker))
+                                print(f"Found dairy match: '{original_case}' -> '{replacement}'")
                     
-                    # Process other dairy items normally
-                    for item in non_milk_items:
-                        if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
-                            # Use a regular expression to match with case insensitivity but preserve case in output
-                            pattern = re.compile(re.escape(item), re.IGNORECASE)
-                            match = pattern.search(new_description)
-                            if match:
-                                original_case = match.group(0)
-                                replacement = dairy_containing_items[item]
-                                new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for dairy)")
-                                print(f"Made special case dairy substitution: '{original_case}' -> '{replacement}'")
+                    # Apply markers
+                    temp_description = new_description
+                    for original, _, marker in dairy_replacements_to_apply:
+                        temp_description = temp_description.replace(original, marker)
+                        
+                    # Replace markers with substitutions
+                    for _, replacement, marker in dairy_replacements_to_apply:
+                        temp_description = temp_description.replace(marker, replacement)
+                        changes.append(f"Changed to '{replacement}' (special case for dairy)")
+                        print(f"Made special case dairy substitution -> '{replacement}'")
+                    
+                    # Update the description
+                    new_description = temp_description
                 
                 if 'Gluten' in allergens:
                     gluten_containing_items = {
