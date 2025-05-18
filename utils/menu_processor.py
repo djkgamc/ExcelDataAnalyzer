@@ -108,6 +108,17 @@ class MenuProcessor:
                 # Create a list of temporary markers for replacements
                 replacements_to_apply = []
                 
+                # Special case for turkey cheese sandwich
+                if "turkey" in new_description.lower() and "cheese" in new_description.lower() and "sandwich" in new_description.lower():
+                    # Create a custom replacement for the entire sandwich
+                    print("Found turkey cheese sandwich - applying special substitution")
+                    new_description = re.sub(
+                        r'\b[Tt]urkey\b.*?\b[Cc]heese\b.*?\b[Ss]andwich\b.*?\b', 
+                        'turkey-nocheese on gluten-free bread', 
+                        new_description,
+                        flags=re.IGNORECASE
+                    )
+                
                 # First pass: identify all replacements needed without modifying the string
                 for original, replacement in all_substitutions.items():
                     print(f"Checking for '{original}' in '{new_description}'")
@@ -116,6 +127,11 @@ class MenuProcessor:
                     if original.lower() == 'milk' and 'soy milk' in new_description.lower():
                         print(f"Skipping '{original}' substitution as we already have 'soy milk' in the description")
                         continue
+                        
+                    # Skip custom cereal in gluten replacement logic
+                    if original.lower() == 'cereal' and 'Gluten' in allergens:
+                        # Add custom cereal directly, then skip further gluten free processing for cereal
+                        print(f"Using custom cereal replacement: {replacement}")
                         
                     # Simple direct string replacement - only detect matches, don't replace yet
                     if original in new_description:
@@ -281,6 +297,13 @@ class MenuProcessor:
                     # Update the description
                     new_description = temp_description
                 
+                # Use a set to track processed items
+                processed_items = set()
+                
+                # Check if cereal was already handled by custom substitution
+                if 'cereal' in all_substitutions:
+                    processed_items.add('cereal')
+                
                 if 'Gluten' in allergens:
                     gluten_containing_items = {
                         'whole wheat': 'gluten-free bread',
@@ -319,6 +342,11 @@ class MenuProcessor:
                     replacements_to_apply = []
                     
                     for item, replacement in gluten_containing_items.items():
+                        # Skip cereal if it's in custom rules to avoid adding "gluten-free" prefix
+                        if item.lower() == 'cereal' and 'cereal' in all_substitutions:
+                            print(f"Skipping gluten-free cereal since custom cereal replacement is used")
+                            continue
+                            
                         if item.lower() in new_description.lower() and not any(item.lower() in k.lower() for k in all_substitutions.keys()):
                             # Use regex with word boundaries to match whole words
                             pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
