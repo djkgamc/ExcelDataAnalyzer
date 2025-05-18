@@ -344,7 +344,12 @@ class MenuProcessor:
                     special_gluten_items = {
                         'WGR ': 'Gluten-free ',
                         'WGR.': 'Gluten-free.',
-                        'WGR,': 'Gluten-free,'
+                        'WGR,': 'Gluten-free,',
+                        'WGR-': 'Gluten-free-',
+                        'WGR:': 'Gluten-free:',
+                        'WGR;': 'Gluten-free;',
+                        ' WGR ': ' Gluten-free ',
+                        ' WGR': ' Gluten-free'
                     }
                     
                     for item, replacement in special_gluten_items.items():
