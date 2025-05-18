@@ -341,8 +341,6 @@ class MenuProcessor:
                         'cracker': 'gluten-free cracker',
                         'quesadilla': 'gluten-free quesadilla',
                         'French toast': 'gluten-free French toast',
-                        'raisin bread': 'gluten-free raisin bread',
-                        'banana bread': 'gluten-free banana bread',
                         'dinner roll': 'gluten-free dinner roll',
                         'goldfish crackers': 'a fruit',
                         'graham crackers': 'gluten-free graham crackers',
@@ -361,6 +359,11 @@ class MenuProcessor:
                         # Skip cereal if it's in custom rules to avoid adding "gluten-free" prefix
                         if item.lower() == 'cereal' and 'cereal' in all_substitutions:
                             print(f"Skipping gluten-free cereal since custom cereal replacement is used")
+                            continue
+                        
+                        # Check if the string already contains "gluten-free" + item to avoid double substitutions
+                        if f"gluten-free {item}" in new_description.lower() or f"gluten-free-{item}" in new_description.lower():
+                            print(f"Skipping '{item}' as it's already been replaced with a gluten-free version")
                             continue
                             
                         if item.lower() in new_description.lower() and not any(item.lower() in k.lower() for k in all_substitutions.keys()):
@@ -396,12 +399,14 @@ class MenuProcessor:
                         ' WGR': ' Gluten-free'
                     }
                     
-                    for item, replacement in special_gluten_items.items():
-                        if item in new_description:
-                            # Direct replacement for abbreviations
-                            new_description = new_description.replace(item, replacement)
-                            changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
-                            print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
+                    # Check if the description already contains "Gluten-free" to avoid double replacements
+                    if "gluten-free" not in new_description.lower():
+                        for item, replacement in special_gluten_items.items():
+                            if item in new_description:
+                                # Direct replacement for abbreviations
+                                new_description = new_description.replace(item, replacement)
+                                changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
+                                print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
