@@ -256,7 +256,7 @@ class MenuProcessor:
                         'fruit yogurt': 'oat milk',
                         'american cheese': 'jam',
                         'cheddar': 'jam',
-                        'mozzarella': 'jam',
+                        'mozzarella': 'no cheese',
                         'ricotta': 'jam',
                         'chees': 'nocheese',  # For "cheese" without "cream"
                         'butter': 'plant-based butter',
