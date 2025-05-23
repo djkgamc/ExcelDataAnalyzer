@@ -199,7 +199,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg+dairy)")
+                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (egg+dairy)")
                                 print(f"Made special case combo substitution: '{original_case}' -> '{replacement}'")
                 
                 elif 'Egg Products' in allergens:
@@ -222,7 +222,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg products)")
+                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (egg products)")
                                 print(f"Made special case egg substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Fish' in allergens:
@@ -241,7 +241,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for fish)")
+                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (fish)")
                                 print(f"Made special case fish substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Dairy' in allergens:
@@ -301,9 +301,9 @@ class MenuProcessor:
                         temp_description = temp_description.replace(original, marker)
                         
                     # Replace markers with substitutions
-                    for _, replacement, marker in dairy_replacements_to_apply:
+                    for original, replacement, marker in dairy_replacements_to_apply:
                         temp_description = temp_description.replace(marker, replacement)
-                        changes.append(f"Changed to '{replacement}' (special case for dairy)")
+                        changes.append(f"'{original}' → '{replacement}' (dairy)")
                         print(f"Made special case dairy substitution -> '{replacement}'")
                     
                     # Update the description
@@ -385,9 +385,9 @@ class MenuProcessor:
                         new_description = new_description.replace(original, marker)
                     
                     # Replace markers with substitutions
-                    for _, replacement, marker in replacements_to_apply:
+                    for original_case, replacement, marker in replacements_to_apply:
                         new_description = new_description.replace(marker, replacement)
-                        changes.append(f"Changed to '{replacement}' (special case for gluten)")
+                        changes.append(f"'{original_case}' → '{replacement}' (gluten)")
                         print(f"Made special case gluten substitution -> '{replacement}'")
                         
                     # Also handle special cases with non-word-boundary matching like "WGR"
