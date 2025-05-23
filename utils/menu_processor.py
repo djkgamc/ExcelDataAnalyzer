@@ -63,7 +63,12 @@ class MenuProcessor:
         from utils.openai_service import get_batch_ai_substitutions
         
         modified_df = self.original_df.copy()
-        changes = []
+        
+        # Organize changes by type
+        custom_rule_changes = set()  # Use sets to avoid duplicates
+        ai_substitution_changes = set()
+        special_case_changes = set()
+        no_substitution_items = set()
         
         # Collect all meal descriptions to batch process
         all_meal_descriptions = []
@@ -144,7 +149,13 @@ class MenuProcessor:
                 # Third pass: replace markers with final replacements
                 for original, replacement, marker, match_type in replacements_to_apply:
                     temp_description = temp_description.replace(marker, replacement)
-                    changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} ({match_type})")
+                    
+                    # Determine if this was from custom rules or AI
+                    change_description = f"Changed '{original}' to '{replacement}'"
+                    if original in custom_rules:
+                        custom_rule_changes.add(change_description)
+                    else:
+                        ai_substitution_changes.add(change_description)
                     print(f"Made {match_type} substitution: '{original}' -> '{replacement}'")
                 
                 # Apply the final clean description
