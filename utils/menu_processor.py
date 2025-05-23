@@ -144,7 +144,7 @@ class MenuProcessor:
                 # Third pass: replace markers with final replacements
                 for _, replacement, marker, match_type in replacements_to_apply:
                     temp_description = temp_description.replace(marker, replacement)
-                    changes.append(f"Changed to '{replacement}' in {meal_type} ({match_type})")
+                    changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} ({match_type})")
                     print(f"Made {match_type} substitution -> '{replacement}'")
                 
                 # Apply the final clean description
