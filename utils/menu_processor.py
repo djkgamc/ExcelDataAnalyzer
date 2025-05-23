@@ -169,9 +169,9 @@ class MenuProcessor:
                     temp_description = temp_description.replace(original, marker)
                 
                 # Third pass: replace markers with final replacements
-                for _, replacement, marker, match_type in replacements_to_apply:
+                for original, replacement, marker, match_type in replacements_to_apply:
                     temp_description = temp_description.replace(marker, replacement)
-                    changes.append(f"Changed to '{replacement}' in {meal_type} ({match_type})")
+                    changes.append(f"'{original}' → '{replacement}' in {meal_type}")
                     print(f"Made {match_type} substitution -> '{replacement}'")
                 
                 # Apply the final clean description
@@ -408,7 +408,7 @@ class MenuProcessor:
                             if item in new_description:
                                 # Direct replacement for abbreviations
                                 new_description = new_description.replace(item, replacement)
-                                changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
+                                changes.append(f"'{item}' → '{replacement}' (gluten abbreviation)")
                                 print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
