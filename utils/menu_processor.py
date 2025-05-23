@@ -117,11 +117,6 @@ class MenuProcessor:
                         print(f"Skipping '{original}' substitution as we already have 'soy milk' in the description")
                         continue
                         
-                    # Skip custom cereal in gluten replacement logic
-                    if original.lower() == 'cereal' and 'Gluten' in allergens:
-                        # Add custom cereal directly, then skip further gluten free processing for cereal
-                        print(f"Using custom cereal replacement: {replacement}")
-                        
                     # Simple direct string replacement - only detect matches, don't replace yet
                     if original in new_description:
                         # Found exact match
@@ -147,9 +142,9 @@ class MenuProcessor:
                     temp_description = temp_description.replace(original, marker)
                 
                 # Third pass: replace markers with final replacements
-                for original, replacement, marker, match_type in replacements_to_apply:
+                for _, replacement, marker, match_type in replacements_to_apply:
                     temp_description = temp_description.replace(marker, replacement)
-                    changes.append(f"'{original}' → '{replacement}' in {meal_type}")
+                    changes.append(f"Changed to '{replacement}' in {meal_type} ({match_type})")
                     print(f"Made {match_type} substitution -> '{replacement}'")
                 
                 # Apply the final clean description
@@ -177,7 +172,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (egg+dairy)")
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg+dairy)")
                                 print(f"Made special case combo substitution: '{original_case}' -> '{replacement}'")
                 
                 elif 'Egg Products' in allergens:
@@ -200,7 +195,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (egg products)")
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg products)")
                                 print(f"Made special case egg substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Fish' in allergens:
@@ -219,11 +214,36 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"'{original_case}' → '{replacement}' in {meal_type} (fish)")
+                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for fish)")
                                 print(f"Made special case fish substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Dairy' in allergens:
-                    dairy_containing_items = {}
+                    dairy_containing_items = {
+                        'milk': 'soy milk',
+                        'Milk': 'Soy milk',  # Capitalized version
+                        'MILK': 'SOY MILK',  # All caps version
+                        'Milk ': 'Soy milk ',  # With a trailing space
+                        'milk ': 'soy milk ',  # With a trailing space
+                        'cheese': 'dairy-free cheese alternative',
+                        'yogurt': 'dairy-free yogurt',
+                        'american cheese': 'dairy-free cheese alternative',
+                        'cheddar': 'dairy-free cheddar alternative',
+                        'mozzarella': 'dairy-free mozzarella alternative',
+                        'ricotta': 'dairy-free ricotta alternative',
+                        'butter': 'plant-based butter',
+                        'cream cheese': 'dairy-free cream cheese',
+                        'mac and cheese': 'dairy-free mac and cheese',
+                        'macaroni & cheese': 'dairy-free macaroni & cheese',
+                        'macaroni and cheese': 'dairy-free macaroni and cheese',
+                        'ice cream': 'dairy-free ice cream',
+                        # Add dairy substitutions for baked goods
+                        'muffin': 'dairy-free muffin',
+                        'corn muffin': 'dairy-free corn muffin',
+                        'blueberry muffin': 'dairy-free blueberry muffin',
+                        'pancake': 'dairy-free vegan pancake',
+                        'waffle': 'dairy-free vegan waffle',
+                        'buttermilk biscuit': 'dairy-free biscuit'
+                    }
                     
                     # Use the same marker-based approach for dairy items
                     dairy_replacements_to_apply = []
@@ -252,51 +272,40 @@ class MenuProcessor:
                         temp_description = temp_description.replace(original, marker)
                         
                     # Replace markers with substitutions
-                    for original, replacement, marker in dairy_replacements_to_apply:
+                    for _, replacement, marker in dairy_replacements_to_apply:
                         temp_description = temp_description.replace(marker, replacement)
-                        changes.append(f"'{original}' → '{replacement}' (dairy)")
+                        changes.append(f"Changed to '{replacement}' (special case for dairy)")
                         print(f"Made special case dairy substitution -> '{replacement}'")
                     
                     # Update the description
                     new_description = temp_description
                 
-                # Use a set to track processed items
-                processed_items = set()
-                
-                # Check if cereal was already handled by custom substitution
-                if 'cereal' in all_substitutions:
-                    processed_items.add('cereal')
-                
                 if 'Gluten' in allergens:
                     gluten_containing_items = {
+                        'cereal': 'gluten-free cereal',
                         'whole wheat': 'gluten-free bread',
                         'wheat': 'gluten-free alternative',
                         'bread': 'gluten-free bread',
                         'roll': 'gluten-free roll',
                         'pasta': 'gluten-free pasta',
-                        'spaghetti': 'gluten-free pasta',
-                        'shells': 'gluten-free pasta',
-                        'macaroni': 'gluten-free pasta',
+                        'spaghetti': 'gluten-free spaghetti',
+                        'shells': 'gluten-free shells',
+                        'macaroni': 'gluten-free macaroni',
                         'crackers': 'gluten-free crackers',
-                        'bagel': 'gluten-free bread',
-                        'mini bagel': 'gluten-free bread',
-                        'biscuit': 'gluten-free bread',
-                        'muffin': 'gluten-free bread',
-                        'pretzel': 'gluten-free bread',
-                        'waffle': 'gluten-free bread',
-                        'pancake': 'gluten-free bread',
-                        'raisin bread': 'gluten-free bread',
-                        'enriched raisin bread': 'gluten-free bread',
-                        'banana bread': 'cheerios',
-                        'enriched banana bread': 'cheerios',
+                        'bagel': 'gluten-free bagel',
+                        'biscuit': 'gluten-free biscuit',
+                        'muffin': 'gluten-free muffin',
+                        'pretzel': 'gluten-free pretzel',
+                        'waffle': 'gluten-free waffle',
+                        'pancake': 'gluten-free pancake',
                         'toast': 'gluten-free toast',
                         'cracker': 'gluten-free cracker',
                         'quesadilla': 'gluten-free quesadilla',
                         'French toast': 'gluten-free French toast',
+                        'raisin bread': 'gluten-free raisin bread',
+                        'banana bread': 'gluten-free banana bread',
                         'dinner roll': 'gluten-free dinner roll',
-                        'goldfish': 'graham crackers',
-                        'Goldfish': 'Graham crackers',
-                        'GOLDFISH': 'GRAHAM CRACKERS',
+                        'goldfish crackers': 'gluten-free crackers',
                         'graham crackers': 'gluten-free graham crackers',
                         'animal crackers': 'gluten-free animal crackers',
                         'Ritz Cr': 'gluten-free crackers',
@@ -310,16 +319,6 @@ class MenuProcessor:
                     replacements_to_apply = []
                     
                     for item, replacement in gluten_containing_items.items():
-                        # Skip cereal if it's in custom rules to avoid adding "gluten-free" prefix
-                        if item.lower() == 'cereal' and 'cereal' in all_substitutions:
-                            print(f"Skipping gluten-free cereal since custom cereal replacement is used")
-                            continue
-                        
-                        # Check if the string already contains "gluten-free" + item to avoid double substitutions
-                        if f"gluten-free {item}" in new_description.lower() or f"gluten-free-{item}" in new_description.lower():
-                            print(f"Skipping '{item}' as it's already been replaced with a gluten-free version")
-                            continue
-                            
                         if item.lower() in new_description.lower() and not any(item.lower() in k.lower() for k in all_substitutions.keys()):
                             # Use regex with word boundaries to match whole words
                             pattern = re.compile(r'\b' + re.escape(item) + r'\b', re.IGNORECASE)
@@ -336,9 +335,9 @@ class MenuProcessor:
                         new_description = new_description.replace(original, marker)
                     
                     # Replace markers with substitutions
-                    for original_case, replacement, marker in replacements_to_apply:
+                    for _, replacement, marker in replacements_to_apply:
                         new_description = new_description.replace(marker, replacement)
-                        changes.append(f"'{original_case}' → '{replacement}' (gluten)")
+                        changes.append(f"Changed to '{replacement}' (special case for gluten)")
                         print(f"Made special case gluten substitution -> '{replacement}'")
                         
                     # Also handle special cases with non-word-boundary matching like "WGR"
@@ -353,14 +352,12 @@ class MenuProcessor:
                         ' WGR': ' Gluten-free'
                     }
                     
-                    # Check if the description already contains "Gluten-free" to avoid double replacements
-                    if "gluten-free" not in new_description.lower():
-                        for item, replacement in special_gluten_items.items():
-                            if item in new_description:
-                                # Direct replacement for abbreviations
-                                new_description = new_description.replace(item, replacement)
-                                changes.append(f"'{item}' → '{replacement}' (gluten abbreviation)")
-                                print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
+                    for item, replacement in special_gluten_items.items():
+                        if item in new_description:
+                            # Direct replacement for abbreviations
+                            new_description = new_description.replace(item, replacement)
+                            changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
+                            print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
