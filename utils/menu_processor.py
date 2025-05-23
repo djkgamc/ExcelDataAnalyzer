@@ -183,7 +183,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg+dairy)")
+                                special_case_changes.add(f"Changed '{original_case}' to '{replacement}' (egg+dairy combo)")
                                 print(f"Made special case combo substitution: '{original_case}' -> '{replacement}'")
                 
                 elif 'Egg Products' in allergens:
@@ -206,7 +206,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for egg products)")
+                                special_case_changes.add(f"Changed '{original_case}' to '{replacement}' (egg products)")
                                 print(f"Made special case egg substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Fish' in allergens:
@@ -225,7 +225,7 @@ class MenuProcessor:
                             if match:
                                 original_case = match.group(0)
                                 new_description = new_description.replace(original_case, replacement)
-                                changes.append(f"Changed '{original_case}' to '{replacement}' in {meal_type} (special case for fish)")
+                                special_case_changes.add(f"Changed '{original_case}' to '{replacement}' (fish)")
                                 print(f"Made special case fish substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Dairy' in allergens:
@@ -285,7 +285,7 @@ class MenuProcessor:
                     # Replace markers with substitutions
                     for original, replacement, marker in dairy_replacements_to_apply:
                         temp_description = temp_description.replace(marker, replacement)
-                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (special case for dairy)")
+                        special_case_changes.add(f"Changed '{original}' to '{replacement}' (dairy)")
                         print(f"Made special case dairy substitution: '{original}' -> '{replacement}'")
                     
                     # Update the description
@@ -348,7 +348,7 @@ class MenuProcessor:
                     # Replace markers with substitutions
                     for original, replacement, marker in replacements_to_apply:
                         new_description = new_description.replace(marker, replacement)
-                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (special case for gluten)")
+                        special_case_changes.add(f"Changed '{original}' to '{replacement}' (gluten)")
                         print(f"Made special case gluten substitution: '{original}' -> '{replacement}'")
                         
                     # Also handle special cases with non-word-boundary matching like "WGR"
@@ -367,12 +367,49 @@ class MenuProcessor:
                         if item in new_description:
                             # Direct replacement for abbreviations
                             new_description = new_description.replace(item, replacement)
-                            changes.append(f"Changed '{item}' to '{replacement}' (special case for gluten abbreviation)")
+                            special_case_changes.add(f"Changed '{item}' to '{replacement}' (gluten abbreviation)")
                             print(f"Made special case gluten abbreviation substitution: '{item}' -> '{replacement}'")
                 
                 modified_df.at[idx, meal_type] = new_description
                 
-        return modified_df, changes
+                # Track items that had no substitutions made
+                if new_description == description and description.strip():
+                    # Check if this item contains allergens but wasn't substituted
+                    for allergen in allergens:
+                        allergen_keywords = {
+                            'Dairy': ['milk', 'cheese', 'yogurt', 'butter'],
+                            'Egg Products': ['egg', 'pancake', 'waffle', 'muffin'],
+                            'Fish': ['fish', 'tuna'],
+                            'Gluten': ['bread', 'wheat', 'pasta', 'cereal']
+                        }
+                        if allergen in allergen_keywords:
+                            for keyword in allergen_keywords[allergen]:
+                                if keyword.lower() in description.lower():
+                                    no_substitution_items.add(f"'{description}' (contains {allergen.lower()} but no substitution made)")
+                                    break
+        
+        # Create organized change log
+        organized_changes = []
+        
+        if custom_rule_changes:
+            organized_changes.append("**Custom rules applied:**")
+            for change in sorted(custom_rule_changes):
+                organized_changes.append(f"- {change}")
+            organized_changes.append("")
+        
+        if ai_substitution_changes or special_case_changes:
+            organized_changes.append("**Substitutions made:**")
+            all_substitutions = sorted(ai_substitution_changes.union(special_case_changes))
+            for change in all_substitutions:
+                organized_changes.append(f"- {change}")
+            organized_changes.append("")
+        
+        if no_substitution_items:
+            organized_changes.append("**No substitution made:**")
+            for item in sorted(no_substitution_items):
+                organized_changes.append(f"- {item}")
+        
+        return modified_df, organized_changes
 
     def highlight_changes(self, original: str, modified: str) -> str:
         """Highlight the differences between original and modified text"""
