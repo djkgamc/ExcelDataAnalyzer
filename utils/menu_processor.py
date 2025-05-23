@@ -108,28 +108,6 @@ class MenuProcessor:
                 # Create a list of temporary markers for replacements
                 replacements_to_apply = []
                 
-                # Special case for turkey cheese sandwich
-                if "turkey" in new_description.lower() and "cheese" in new_description.lower() and "sandwich" in new_description.lower():
-                    # Create a custom replacement for the entire sandwich
-                    print("Found turkey cheese sandwich - applying special substitution")
-                    new_description = re.sub(
-                        r'\b[Tt]urkey\b.*?\b[Cc]heese\b.*?\b[Ss]andwich\b.*?\b', 
-                        'turkey-nocheese on gluten-free bread', 
-                        new_description,
-                        flags=re.IGNORECASE
-                    )
-                
-                # Special case for cheeseburger
-                if "cheeseburger" in new_description.lower():
-                    # Create a custom replacement for cheeseburger
-                    print("Found cheeseburger - applying special substitution")
-                    new_description = re.sub(
-                        r'\b[Cc]heeseburger\b.*?\b', 
-                        'burger-no cheese ', 
-                        new_description,
-                        flags=re.IGNORECASE
-                    )
-                
                 # First pass: identify all replacements needed without modifying the string
                 for original, replacement in all_substitutions.items():
                     print(f"Checking for '{original}' in '{new_description}'")
@@ -245,34 +223,7 @@ class MenuProcessor:
                                 print(f"Made special case fish substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Dairy' in allergens:
-                    dairy_containing_items = {
-                        'milk': 'oat milk',
-                        'Milk': 'Oat milk',  # Capitalized version
-                        'MILK': 'OAT MILK',  # All caps version
-                        'Milk ': 'Oat milk ',  # With a trailing space
-                        'milk ': 'oat milk ',  # With a trailing space
-                        'cheese': 'jam',
-                        'yogurt': 'oat milk',
-                        'fruit yogurt': 'oat milk',
-                        'american cheese': 'jam',
-                        'cheddar': 'jam',
-                        'mozzarella': 'no cheese',
-                        'ricotta': 'jam',
-                        'chees': 'nocheese',  # For "cheese" without "cream"
-                        'butter': 'plant-based butter',
-                        'cream cheese': 'jam',
-                        'mac and cheese': 'gluten-free pasta with jam',
-                        'macaroni & cheese': 'gluten-free pasta with jam',
-                        'macaroni and cheese': 'gluten-free pasta with jam',
-                        'ice cream': 'dairy-free ice cream',
-                        # Add dairy substitutions for baked goods
-                        'muffin': 'fruit',
-                        'corn muffin': 'fruit',
-                        'blueberry muffin': 'fruit',
-                        'pancake': 'dairy-free vegan pancake',
-                        'waffle': 'dairy-free vegan waffle',
-                        'buttermilk biscuit': 'dairy-free biscuit'
-                    }
+                    dairy_containing_items = {}
                     
                     # Use the same marker-based approach for dairy items
                     dairy_replacements_to_apply = []
