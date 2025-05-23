@@ -142,10 +142,10 @@ class MenuProcessor:
                     temp_description = temp_description.replace(original, marker)
                 
                 # Third pass: replace markers with final replacements
-                for _, replacement, marker, match_type in replacements_to_apply:
+                for original, replacement, marker, match_type in replacements_to_apply:
                     temp_description = temp_description.replace(marker, replacement)
                     changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} ({match_type})")
-                    print(f"Made {match_type} substitution -> '{replacement}'")
+                    print(f"Made {match_type} substitution: '{original}' -> '{replacement}'")
                 
                 # Apply the final clean description
                 new_description = temp_description
@@ -272,10 +272,10 @@ class MenuProcessor:
                         temp_description = temp_description.replace(original, marker)
                         
                     # Replace markers with substitutions
-                    for _, replacement, marker in dairy_replacements_to_apply:
+                    for original, replacement, marker in dairy_replacements_to_apply:
                         temp_description = temp_description.replace(marker, replacement)
-                        changes.append(f"Changed to '{replacement}' (special case for dairy)")
-                        print(f"Made special case dairy substitution -> '{replacement}'")
+                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (special case for dairy)")
+                        print(f"Made special case dairy substitution: '{original}' -> '{replacement}'")
                     
                     # Update the description
                     new_description = temp_description
@@ -335,10 +335,10 @@ class MenuProcessor:
                         new_description = new_description.replace(original, marker)
                     
                     # Replace markers with substitutions
-                    for _, replacement, marker in replacements_to_apply:
+                    for original, replacement, marker in replacements_to_apply:
                         new_description = new_description.replace(marker, replacement)
-                        changes.append(f"Changed to '{replacement}' (special case for gluten)")
-                        print(f"Made special case gluten substitution -> '{replacement}'")
+                        changes.append(f"Changed '{original}' to '{replacement}' in {meal_type} (special case for gluten)")
+                        print(f"Made special case gluten substitution: '{original}' -> '{replacement}'")
                         
                     # Also handle special cases with non-word-boundary matching like "WGR"
                     special_gluten_items = {
