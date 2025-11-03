@@ -77,7 +77,7 @@ class MenuProcessor:
         for meal_type in ['Breakfast', 'Lunch', 'Snack']:
             if meal_type in modified_df.columns:
                 for idx, description in enumerate(modified_df[meal_type]):
-                    if pd.notna(description):  # Check if the meal description exists
+                    if pd.notna(description) and description.strip() != '':  # Check if the meal description exists and is not blank
                         all_meal_descriptions.append(description)
                         meal_indices.append((meal_type, idx))
         
@@ -93,10 +93,14 @@ class MenuProcessor:
             # Apply substitutions to each meal
             for i, (meal_type, idx) in enumerate(meal_indices):
                 description = all_meal_descriptions[i]
-                ai_substitutions = all_substitutions_list[i] if i < len(all_substitutions_list) else {}
+                # ai_substitutions = all_substitutions_list[i] if i < len(all_substitutions_list) else {}
+
+                # above made no sense? we should use all of them
+                ai_substitutions = all_substitutions_list[0]
                 
                 # Debug output to verify what we're getting
                 print(f"Meal type: {meal_type}, Meal: {description}")
+
                 print(f"AI Substitutions: {ai_substitutions}")
                 
                 # Combine custom rules with AI substitutions, with AI taking precedence
@@ -164,17 +168,20 @@ class MenuProcessor:
                 # Apply special case handling for common items containing allergens
                 # Check first if both dairy and eggs are being removed
                 if 'Egg Products' in allergens and 'Dairy' in allergens:
-                    combo_allergen_items = {
-                        '1/2 boiled egg': '1/2 scrambled tofu (egg-free, dairy-free alternative)',
-                        'enriched corn muffin': 'vegan corn muffin (egg-free and dairy-free, made with applesauce)',
-                        'enriched blueberry muffin': 'vegan blueberry muffin (egg-free and dairy-free, made with applesauce)',
-                        'enriched banana bread': 'vegan banana bread (egg-free and dairy-free, made with applesauce)',
-                        'enriched cinnamon raisin bread': 'vegan cinnamon raisin bread (egg-free and dairy-free)',
-                        'pancake': 'vegan pancake (egg-free and dairy-free)',
-                        'waffle': 'vegan waffle (egg-free and dairy-free)',
-                        'muffin': 'vegan muffin (egg-free and dairy-free, made with applesauce)',
-                        'buttermilk biscuit': 'vegan biscuit (egg-free and dairy-free)'
-                    }
+                    # combo_allergen_items = {
+                    #     '1/2 boiled egg': '1/2 scrambled tofu (egg-free, dairy-free alternative)',
+                    #     'enriched corn muffin': 'vegan corn muffin (egg-free and dairy-free, made with applesauce)',
+                    #     'enriched blueberry muffin': 'vegan blueberry muffin (egg-free and dairy-free, made with applesauce)',
+                    #     'enriched banana bread': 'vegan banana bread (egg-free and dairy-free, made with applesauce)',
+                    #     'enriched cinnamon raisin bread': 'vegan cinnamon raisin bread (egg-free and dairy-free)',
+                    #     'pancake': 'vegan pancake (egg-free and dairy-free)',
+                    #     'waffle': 'vegan waffle (egg-free and dairy-free)',
+                    #     'muffin': 'vegan muffin (egg-free and dairy-free, made with applesauce)',
+                    #     'buttermilk biscuit': 'vegan biscuit (egg-free and dairy-free)'
+                    # }
+
+                    # I want the AI to handle these
+                    combo_allergen_items = {}
                     
                     for item, replacement in combo_allergen_items.items():
                         if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
@@ -187,16 +194,19 @@ class MenuProcessor:
                                 print(f"Made special case combo substitution: '{original_case}' -> '{replacement}'")
                 
                 elif 'Egg Products' in allergens:
-                    egg_containing_items = {
-                        '1/2 boiled egg': '1/2 scrambled tofu (egg-free alternative)',
-                        'enriched corn muffin': 'egg-free corn muffin (made with applesauce)',
-                        'enriched blueberry muffin': 'egg-free blueberry muffin (made with applesauce)',
-                        'enriched banana bread': 'egg-free banana bread (made with applesauce)',
-                        'enriched cinnamon raisin bread': 'egg-free cinnamon raisin bread',
-                        'pancake': 'egg-free vegan pancake',
-                        'waffle': 'egg-free vegan waffle',
-                        'muffin': 'egg-free muffin (made with applesauce)'
-                    }
+                    # egg_containing_items = {
+                    #     '1/2 boiled egg': '1/2 scrambled tofu (egg-free alternative)',
+                    #     'enriched corn muffin': 'egg-free corn muffin (made with applesauce)',
+                    #     'enriched blueberry muffin': 'egg-free blueberry muffin (made with applesauce)',
+                    #     'enriched banana bread': 'egg-free banana bread (made with applesauce)',
+                    #     'enriched cinnamon raisin bread': 'egg-free cinnamon raisin bread',
+                    #     'pancake': 'egg-free vegan pancake',
+                    #     'waffle': 'egg-free vegan waffle',
+                    #     'muffin': 'egg-free muffin (made with applesauce)'
+                    # }
+
+                    # I want the AI to handle these
+                    egg_containing_items = {}
                     
                     for item, replacement in egg_containing_items.items():
                         if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
@@ -210,12 +220,15 @@ class MenuProcessor:
                                 print(f"Made special case egg substitution: '{original_case}' -> '{replacement}'")
                 
                 if 'Fish' in allergens:
-                    fish_containing_items = {
-                        '3 fish sticks with tartar sauc': '3 plant-based fish-free sticks with vegan tartar sauce',
-                        'tuna fish': 'chickpea "tuna" salad',
-                        'fish sticks': 'plant-based fish-free sticks',
-                        'tuna': 'chickpea "tuna" salad'
-                    }
+                    # fish_containing_items = {
+                    #     '3 fish sticks with tartar sauc': '3 plant-based fish-free sticks with vegan tartar sauce',
+                    #     'tuna fish': 'chickpea "tuna" salad',
+                    #     'fish sticks': 'plant-based fish-free sticks',
+                    #     'tuna': 'chickpea "tuna" salad'
+                    # }
+                    
+                    # I want the AI to handle these
+                    fish_containing_items = {}
                     
                     for item, replacement in fish_containing_items.items():
                         if item in new_description.lower() and not any(item in k.lower() for k in all_substitutions.keys()):
@@ -255,6 +268,9 @@ class MenuProcessor:
                         'waffle': 'dairy-free vegan waffle',
                         'buttermilk biscuit': 'dairy-free biscuit'
                     }
+                    
+                    # I want the AI to handle these
+                    dairy_containing_items = {}
                     
                     # Use the same marker-based approach for dairy items
                     dairy_replacements_to_apply = []
@@ -325,6 +341,9 @@ class MenuProcessor:
                         'wgr': 'gluten-free',
                         'enriched': 'gluten-free'
                     }
+
+                    # I want the AI to handle these
+                    gluten_containing_items = {}
                     
                     # First pass - use marker-based replacement to avoid nested replacements
                     replacements_to_apply = []
@@ -363,6 +382,9 @@ class MenuProcessor:
                         ' WGR': ' Gluten-free'
                     }
                     
+                    # I want the AI to handle these
+                    special_gluten_items = {}
+                    
                     for item, replacement in special_gluten_items.items():
                         if item in new_description:
                             # Direct replacement for abbreviations
@@ -374,19 +396,8 @@ class MenuProcessor:
                 
                 # Track items that had no substitutions made
                 if new_description == description and description.strip():
-                    # Check if this item contains allergens but wasn't substituted
-                    for allergen in allergens:
-                        allergen_keywords = {
-                            'Dairy': ['milk', 'cheese', 'yogurt', 'butter'],
-                            'Egg Products': ['egg', 'pancake', 'waffle', 'muffin'],
-                            'Fish': ['fish', 'tuna'],
-                            'Gluten': ['bread', 'wheat', 'pasta', 'cereal']
-                        }
-                        if allergen in allergen_keywords:
-                            for keyword in allergen_keywords[allergen]:
-                                if keyword.lower() in description.lower():
-                                    no_substitution_items.add(f"'{description}' (contains {allergen.lower()} but no substitution made)")
-                                    break
+                    # Track any skipped substitutions, regardless of allergen
+                    no_substitution_items.add(f"'{description}' (no substitution made)")
         
         # Create organized change log
         organized_changes = []

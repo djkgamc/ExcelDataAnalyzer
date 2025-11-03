@@ -1,0 +1,6 @@
+Stuff we need to fix/make:
+- Easy input (we have to manually make a CSV in a specific format, is there a way to avoid that?)
+- Quality output (no misses - it missed one)
+- Easy review (no misses, easy understanding what it did)
+- Easy output (can we bring it back to the other format)
+-Don't run automatically
