@@ -55,20 +55,31 @@ def main():
             else:
                 st.error("Please fill in both original and replacement ingredients.")
 
-    # View existing custom rules with delete option
+    # View existing custom rules with delete option - organized by allergen
     st.sidebar.subheader("Custom Rules")
     custom_rules = db.query(SubstitutionRule).all()
     if custom_rules:
+        # Group rules by allergen
+        allergen_groups = {}
         for rule in custom_rules:
-            col1, col2 = st.sidebar.columns([4, 1])
-            with col1:
-                st.text(f"{rule.allergen}: {rule.original} → {rule.replacement}")
-            with col2:
-                if st.button("🗑️", key=f"delete_{rule.id}"):
-                    from utils.substitutions import delete_substitution_rule
-                    if delete_substitution_rule(rule.id, db):
-                        st.success("Rule deleted!")
-                        st.rerun()
+            if rule.allergen not in allergen_groups:
+                allergen_groups[rule.allergen] = []
+            allergen_groups[rule.allergen].append(rule)
+        
+        # Display rules grouped by allergen
+        for allergen in sorted(allergen_groups.keys()):
+            st.sidebar.markdown(f"**{allergen}**")
+            for rule in allergen_groups[allergen]:
+                col1, col2 = st.sidebar.columns([4, 1])
+                with col1:
+                    st.text(f"{rule.original} → {rule.replacement}")
+                with col2:
+                    if st.button("🗑️", key=f"delete_{rule.id}"):
+                        from utils.substitutions import delete_substitution_rule
+                        if delete_substitution_rule(rule.id, db):
+                            st.success("Rule deleted!")
+                            st.rerun()
+            st.sidebar.divider()
     else:
         st.sidebar.text("No custom rules added yet.")
 
