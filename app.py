@@ -4,6 +4,7 @@ from utils.menu_processor import MenuProcessor
 from utils.substitutions import get_substitution_rules, add_substitution_rule
 from utils.database import init_db, get_db, SubstitutionRule
 from utils.confetti import show_confetti
+from utils.excel_exporter import export_to_excel
 from typing import Generator
 import io
 import hashlib
@@ -134,11 +135,12 @@ def main():
                     # Process menu with both custom rules and allergens for AI processing
                     modified_df, changes = processor.convert_menu(custom_rules, allergens)
                     
-                    # Store results in session state
+                    # Store results in session state including the processor for Excel export
                     st.session_state.processed_results = {
                         'modified_df': modified_df,
                         'changes': changes,
-                        'original_df': processor.original_df
+                        'original_df': processor.original_df,
+                        'processor': processor
                     }
                     
                     # Show confetti for successful processing
@@ -168,31 +170,18 @@ def main():
 
                 # Export options
                 st.subheader("Export Modified Menu")
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    csv = results['modified_df'].to_csv(index=False)
-                    st.download_button(
-                        label="Download CSV",
-                        data=csv,
-                        file_name="modified_menu.csv",
-                        mime="text/csv",
-                        on_click=show_confetti
-                    )
-
-                with col2:
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        results['modified_df'].to_excel(writer, index=False)
-
-                    buffer.seek(0)
-                    st.download_button(
-                        label="Download Excel",
-                        data=buffer,
-                        file_name="modified_menu.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        on_click=show_confetti
-                    )
+                
+                # Generate Excel file with red highlighting for substitutions
+                excel_buffer = export_to_excel(results['modified_df'], results['processor'])
+                
+                st.download_button(
+                    label="📥 Download Excel (with highlighted substitutions)",
+                    data=excel_buffer,
+                    file_name="modified_menu.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    on_click=show_confetti,
+                    use_container_width=True
+                )
 
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
@@ -205,25 +194,27 @@ def main():
         1. Select the allergens you want to exclude using the sidebar
         2. Add custom substitution rules if needed
         3. Upload your menu file (CSV format)
-        4. Review the changes in the side-by-side view
-        5. Export the modified menu in your preferred format
+        4. Click the "Run Conversion" button to process
+        5. Review the changes in the side-by-side view
+        6. Download the Excel file with highlighted substitutions
 
         ### Menu File Format:
         Your menu file should be in CSV format with:
-        - One row per day
-        - Different weeks in separate columns
+        - Rows representing days of the week (Monday-Friday)
+        - Columns representing weeks (Week 1-4)
         - Each cell containing:
-          - B: (Breakfast)
-          - L: (Lunch)
-          - S: (Snack)
+          - B: (Breakfast items)
+          - L: (Lunch items)
+          - S: (Snack items)
 
         ### Supported Features:
         - Multiple allergen exclusions
         - Custom substitution rules
-        - Automatic substitution suggestions
-        - Change highlighting
-        - Export to CSV or Excel
+        - AI-powered substitution suggestions
+        - Excel export with red highlighting for substituted ingredients
+        - Original CSV format preserved in output
         """)
+
 
 if __name__ == "__main__":
     main()
