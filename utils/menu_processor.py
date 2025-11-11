@@ -37,17 +37,21 @@ class MenuProcessor:
                     cell_positions.append((row_idx, col_idx))
         
         # Get AI substitutions for all cells in batch
+        # Note: The API returns ONE dictionary with all substitutions from the entire menu
+        ai_substitutions = {}
         if cell_contents:
             all_substitutions_list = get_batch_ai_substitutions(
                 cell_contents,
                 allergens,
                 custom_rules
             )
+            # Extract the single dictionary of all substitutions
+            if all_substitutions_list and len(all_substitutions_list) > 0:
+                ai_substitutions = all_substitutions_list[0]
             
-            # Process each cell
+            # Process each cell with the same AI substitutions dictionary
             for i, (row_idx, col_idx) in enumerate(cell_positions):
                 original_content = cell_contents[i]
-                ai_substitutions = all_substitutions_list[i] if i < len(all_substitutions_list) else {}
                 
                 # Combine custom rules with AI substitutions
                 all_substitutions = {**custom_rules, **ai_substitutions}
