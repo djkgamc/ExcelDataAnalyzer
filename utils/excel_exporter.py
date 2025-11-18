@@ -42,7 +42,7 @@ def create_rich_text_cell(original_text: str, substitutions: List[Tuple[str, str
     
     # Build rich text segments
     last_end = 0
-    red_font = InlineFont(color=Color(rgb='FFFF0000'))  # Red color
+    red_font = InlineFont(color=Color(rgb='FF0000'))  # Red color (6-digit RGB)
     
     for start, end, text in replacement_positions:
         # Add normal text before this replacement
@@ -51,13 +51,17 @@ def create_rich_text_cell(original_text: str, substitutions: List[Tuple[str, str
             if normal_text:
                 segments.append(normal_text)
         
-        # Add red text for the replacement
-        segments.append(TextBlock(red_font, current_text[start:end]))
+        # Add red text for the replacement (only if not empty)
+        replacement_text = current_text[start:end]
+        if replacement_text:
+            segments.append(TextBlock(red_font, replacement_text))
         last_end = end
     
-    # Add any remaining normal text
+    # Add any remaining normal text (only if not empty)
     if last_end < len(current_text):
-        segments.append(current_text[last_end:])
+        remaining_text = current_text[last_end:]
+        if remaining_text:
+            segments.append(remaining_text)
     
     # Create rich text object
     if segments:
