@@ -1,4 +1,4 @@
 Stuff we need to fix/make:
-- Easy input (we have to manually make a CSV in a specific format, is there a way to avoid that?)
-- Quality output (no misses - it missed one)
-- Easy review (no misses, easy understanding what it did)
+- Easy input (we have to manually make a CSV in a specific format, is there a way to avoid that? Yes, probably, because it's the same format every time. So we can tell Replit to figure it out from one file)
+- Quality output (no misses - it missed one). Excel format doesn't work, says Soy Milk a lot. 
+- Easy review (no misses, easy understanding what it did).  There's too many things on the screen, we can remove some
