@@ -3,7 +3,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.cell.text import InlineFont
 from openpyxl.cell.rich_text import TextBlock, CellRichText
-from openpyxl.styles import Alignment, Font, Color
+from openpyxl.styles import Alignment, Font
 from openpyxl.utils.dataframe import dataframe_to_rows
 import re
 from typing import Union, List, Tuple
@@ -42,7 +42,7 @@ def create_rich_text_cell(original_text: str, substitutions: List[Tuple[str, str
     
     # Build rich text segments
     last_end = 0
-    red_font = InlineFont(color=Color(rgb='FF0000'))  # Red color (6-digit RGB)
+    red_font = InlineFont(color='00FF0000')  # Red color (8-digit ARGB: alpha=00, RGB=FF0000)
     
     for start, end, text in replacement_positions:
         # Add normal text before this replacement
