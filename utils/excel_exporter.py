@@ -40,11 +40,26 @@ def create_rich_text_cell(original_text: str, substitutions: List[Tuple[str, str
     # Sort by position
     replacement_positions.sort()
     
+    # Merge overlapping intervals
+    merged_positions = []
+    if replacement_positions:
+        current_start, current_end, _ = replacement_positions[0]
+        
+        for next_start, next_end, _ in replacement_positions[1:]:
+            if next_start < current_end:
+                # Overlap, extend current end
+                current_end = max(current_end, next_end)
+            else:
+                # No overlap, push current and start new
+                merged_positions.append((current_start, current_end))
+                current_start, current_end = next_start, next_end
+        merged_positions.append((current_start, current_end))
+    
     # Build rich text segments
     last_end = 0
-    red_font = InlineFont(color='00FF0000')  # Red color (8-digit ARGB: alpha=00, RGB=FF0000)
+    red_font = InlineFont(color='FFFF0000')  # Red color (8-digit ARGB: alpha=FF, RGB=FF0000)
     
-    for start, end, text in replacement_positions:
+    for start, end in merged_positions:
         # Add normal text before this replacement
         if start > last_end:
             normal_text = current_text[last_end:start]
