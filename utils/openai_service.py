@@ -143,8 +143,7 @@ Do not use nested objects or arrays for the substitutions.
         try:
             response = client.responses.create(
                 model="o4-mini",
-                max_output_tokens=
-                16000,
+                max_output_tokens=16000,
                 instructions=
                 "You are a dietary safety expert specializing in preventing severe allergic reactions in children. Your suggestions must be extremely cautious and prioritize safety above all else. ONLY suggest substitutions for SPECIFICALLY LISTED allergens. DO NOT substitute ingredients for allergens that weren't explicitly mentioned. For example, if only 'Fish' is listed as an allergen, do NOT replace dairy or gluten ingredients.\nKnow the hidden allergens: Eggs are in pancakes, waffles, muffins, and most baked goods. Dairy is in all cheese, milk, yogurt, and butter. Fish includes tuna and all seafood. Gluten is in all wheat, bread, pasta, and cereals.",
                 input=prompt,
