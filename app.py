@@ -6,7 +6,6 @@ from utils.database import init_db, get_db, SubstitutionRule
 from utils.confetti import show_confetti
 from utils.excel_exporter import export_to_excel
 from typing import Generator
-import io
 import hashlib
 
 # Initialize database
@@ -95,28 +94,28 @@ def main():
 
     # File upload
     uploaded_file = st.file_uploader(
-        "Upload your menu file (CSV format)",
-        type=["csv", "txt"]
+        "Upload your menu file (Excel format)",
+        type=["xlsm", "xlsx", "xls"]
     )
 
     if uploaded_file:
         try:
             # Read the file content
-            content = uploaded_file.getvalue().decode('utf-8')
-            
+            content_bytes = uploaded_file.getvalue()
+
             # Calculate hash of file content to detect changes
-            file_hash = hashlib.md5(content.encode()).hexdigest()
+            file_hash = hashlib.md5(content_bytes).hexdigest()
             
             # Check if this is a new file or settings changed - clear results if so
             allergens_tuple = tuple(sorted(allergens))
-            if (file_hash != st.session_state.current_file_hash or 
+            if (file_hash != st.session_state.current_file_hash or
                 allergens_tuple != st.session_state.current_allergens):
                 st.session_state.processed_results = None
                 st.session_state.current_file_hash = file_hash
                 st.session_state.current_allergens = allergens_tuple
 
             # Initialize processor with raw content
-            processor = MenuProcessor(content)
+            processor = MenuProcessor(content_bytes)
 
             # Show original menu preview
             st.subheader("Original Menu Preview")
@@ -133,14 +132,15 @@ def main():
                     custom_rules = get_substitution_rules(allergens, db)
 
                     # Process menu with both custom rules and allergens for AI processing
-                    modified_df, changes = processor.convert_menu(custom_rules, allergens)
-                    
+                    modified_df, changes, summary = processor.convert_menu(custom_rules, allergens)
+
                     # Store results in session state including the processor for Excel export
                     st.session_state.processed_results = {
                         'modified_df': modified_df,
                         'changes': changes,
                         'original_df': processor.original_df,
-                        'processor': processor
+                        'processor': processor,
+                        'summary': summary
                     }
                     
                     # Show confetti for successful processing
@@ -163,10 +163,29 @@ def main():
                     st.dataframe(results['modified_df'], use_container_width=True)
 
                 # Display changes
+                summary = results.get('summary', {})
+                replaced_meals = summary.get('replaced', [])
+                unreplaced_meals = summary.get('unreplaced', [])
+
+                if replaced_meals:
+                    st.subheader("Replaced meals")
+                    for item in replaced_meals:
+                        st.success(
+                            f"Week {item['week']} {item['day']} ({item['meal_type']}): "
+                            f"{item['original']} → {item['replacement']}"
+                        )
+
+                if unreplaced_meals:
+                    st.subheader("Unreplaced meals (no allergen conflicts)")
+                    for item in unreplaced_meals:
+                        st.info(
+                            f"Week {item['week']} {item['day']} ({item['meal_type']}): {item['text']}"
+                        )
+
                 if results['changes']:
-                    st.subheader("Changes Made")
+                    st.subheader("Raw change log")
                     for change in results['changes']:
-                        st.info(change)
+                        st.caption(change)
 
                 # Export options
                 st.subheader("Export Modified Menu")
@@ -193,26 +212,26 @@ def main():
         ### How to use this tool:
         1. Select the allergens you want to exclude using the sidebar
         2. Add custom substitution rules if needed
-        3. Upload your menu file (CSV format)
+        3. Upload your menu file (Excel format)
         4. Click the "Run Conversion" button to process
         5. Review the changes in the side-by-side view
         6. Download the Excel file with highlighted substitutions
 
         ### Menu File Format:
-        Your menu file should be in CSV format with:
-        - Rows representing days of the week (Monday-Friday)
-        - Columns representing weeks (Week 1-4)
-        - Each cell containing:
-          - B: (Breakfast items)
-          - L: (Lunch items)
-          - S: (Snack items)
+        Upload an Excel file that matches the provided `Menu_Allergy_Sub.xlsm` template:
+        - Columns for Week 1-4 along the top row
+        - Monday-Friday listed down the left side
+        - Each meal cell contains three labeled lines:
+          - `B:` for Breakfast
+          - `L:` for Lunch
+          - `S:` for Snack
 
         ### Supported Features:
         - Multiple allergen exclusions
         - Custom substitution rules
         - AI-powered substitution suggestions
         - Excel export with red highlighting for substituted ingredients
-        - Original CSV format preserved in output
+        - Original Excel-style layout preserved in output
         """)
 
 

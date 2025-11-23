@@ -5,12 +5,7 @@ from openai import OpenAI
 from typing import Dict, List, Union
 
 api_key = os.environ.get("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError(
-        "OPENAI_API_KEY environment variable is not set. Please add it to your environment variables."
-    )
-
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=api_key) if api_key else None
 
 MODEL_NAME = "gpt-5-nano"
 
@@ -46,6 +41,11 @@ def get_batch_ai_substitutions(
     """
     if not meal_descriptions:
         return []
+
+    if client is None:
+        raise ValueError(
+            "OPENAI_API_KEY environment variable is not set. Please add it to your environment."
+        )
 
     custom_rules_text = ""
     if custom_rules:
