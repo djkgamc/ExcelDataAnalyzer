@@ -58,7 +58,7 @@ class OpenAIServiceTests(unittest.TestCase):
     def test_responses_api_uses_output_token_param(self):
         fake_client = FakeClient()
 
-        with patch.object(openai_service, "client", fake_client):
+        with patch.object(openai_service, "get_openai_client", return_value=fake_client):
             substitutions = openai_service.get_batch_ai_substitutions(
                 ["Meal description"], ["Dairy"]
             )
@@ -81,7 +81,7 @@ class OpenAIServiceTests(unittest.TestCase):
 
         fake_client = ClientWithoutSchema()
 
-        with patch.object(openai_service, "client", fake_client):
+        with patch.object(openai_service, "get_openai_client", return_value=fake_client):
             substitutions = openai_service.get_batch_ai_substitutions(
                 ["Yogurt snack"], ["Dairy"]
             )
@@ -95,12 +95,14 @@ class OpenAIServiceTests(unittest.TestCase):
 
 class LiveOpenAIIntegrationTests(unittest.TestCase):
     @unittest.skipUnless(
-        os.getenv("OPENAI_API_KEY"), "OPENAI_API_KEY is required for live OpenAI call"
+        openai_service.resolve_api_key(),
+        "OPENAI_API_KEY is required for live OpenAI call",
     )
     def test_live_call_returns_substitutions(self):
         # Ensure we are exercising the real client (Responses API, not completions)
-        self.assertIsNotNone(openai_service.client)
-        self.assertTrue(hasattr(openai_service.client, "responses"))
+        client = openai_service.get_openai_client()
+        self.assertIsNotNone(client)
+        self.assertTrue(hasattr(client, "responses"))
 
         substitutions = openai_service.get_batch_ai_substitutions(
             ["Breakfast: milk, cheese toast, and yogurt parfait"],

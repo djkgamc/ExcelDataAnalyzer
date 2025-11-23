@@ -3,10 +3,10 @@ import json
 import time
 import inspect
 from openai import OpenAI
-from typing import Dict, List, Union
+from typing import Dict, List, Optional
 
-api_key = os.environ.get("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
+_client_cache = None
+_client_api_key = None
 
 MODEL_NAME = "gpt-5-nano"
 
@@ -23,6 +23,40 @@ def get_ai_substitutions(meal_description: str,
     """
     return get_batch_ai_substitutions([meal_description], allergens,
                                       custom_rules)[0]
+
+
+def resolve_api_key() -> Optional[str]:
+    """Resolve the OpenAI API key from the environment using flexible keys."""
+
+    for key_name in (
+        "OPENAI_API_KEY",
+        "openai_api_key",
+        "OPENAI_API_KEY_ENV",
+        "openai_api_key_env",
+    ):
+        value = os.environ.get(key_name)
+        if value:
+            return value
+    return None
+
+
+def get_openai_client() -> OpenAI:
+    """Return a cached OpenAI client using the currently configured API key."""
+
+    global _client_cache, _client_api_key
+
+    api_key = resolve_api_key()
+    if not api_key:
+        raise ValueError(
+            "OPENAI_API_KEY environment variable is not set. Please add it to your environment."
+        )
+
+    if _client_cache is not None and api_key == _client_api_key:
+        return _client_cache
+
+    _client_cache = OpenAI(api_key=api_key)
+    _client_api_key = api_key
+    return _client_cache
 
 
 def get_batch_ai_substitutions(
@@ -43,10 +77,7 @@ def get_batch_ai_substitutions(
     if not meal_descriptions:
         return []
 
-    if client is None:
-        raise ValueError(
-            "OPENAI_API_KEY environment variable is not set. Please add it to your environment."
-        )
+    client = get_openai_client()
 
     custom_rules_text = ""
     if custom_rules:
