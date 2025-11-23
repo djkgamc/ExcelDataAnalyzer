@@ -143,9 +143,9 @@ Do not use nested objects or arrays for the substitutions.
     retry_count = 0
     while retry_count < MAX_RETRIES:
         try:
-            response = client.chat.completions.create(
+            response = client.responses.create(
                 model=MODEL_NAME,
-                max_tokens=4000,
+                max_completion_tokens=4000,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {
@@ -154,7 +154,7 @@ Do not use nested objects or arrays for the substitutions.
                         "strict": True,
                     },
                 },
-                messages=[
+                input=[
                     {
                         "role": "system",
                         "content": "You are a dietary safety expert specializing in preventing severe allergic reactions in children. Your suggestions must be extremely cautious and prioritize safety above all else. ONLY suggest substitutions for SPECIFICALLY LISTED allergens. DO NOT substitute ingredients for allergens that weren't explicitly mentioned. For example, if only 'Fish' is listed as an allergen, do NOT replace dairy or gluten ingredients.\nKnow the hidden allergens: Eggs are in pancakes, waffles, muffins, and most baked goods. Dairy is in all cheese, milk, yogurt, and butter. Fish includes tuna and all seafood. Gluten is in all wheat, bread, pasta, and cereals.",
@@ -186,7 +186,28 @@ Do not use nested objects or arrays for the substitutions.
 
     try:
         print("\n=== OpenAI API Response ===")
-        message_content = response.choices[0].message.content if response.choices else ""
+        message_content = ""
+        if response and getattr(response, "output", None):
+            output_items = response.output or []
+            output_entry = output_items[0] if output_items else None
+        else:
+            output_entry = None
+
+        if output_entry:
+            if getattr(output_entry, "content", None):
+                for content_part in output_entry.content:
+                    if getattr(content_part, "text", None):
+                        message_content = content_part.text
+                        break
+                    if getattr(content_part, "json", None) is not None:
+                        message_content = json.dumps(content_part.json)
+                        break
+            if not message_content:
+                if getattr(output_entry, "text", None):
+                    message_content = output_entry.text
+                elif getattr(output_entry, "json", None) is not None:
+                    message_content = json.dumps(output_entry.json)
+
         message_content = message_content or ""
         print(message_content)
         print("===========================================\n")
