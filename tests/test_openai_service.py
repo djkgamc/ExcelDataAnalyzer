@@ -24,15 +24,27 @@ class FakeResponsesClient:
     def __init__(self):
         self.last_kwargs = None
 
+    def create(self, *, response_format=None, **kwargs):
+        self.last_kwargs = {"response_format": response_format, **kwargs}
+        return FakeResponse(
+            [
+                {"original": "Milk", "substitution": "Soy milk"},
+                {"original": "Cheese", "substitution": "Vegan cheese"},
+            ]
+        )
+
+
+class FakeResponsesWithoutSchema:
+    def __init__(self):
+        self.last_kwargs = None
+
     def create(self, **kwargs):
+        # Simulate an SDK shape that rejects response_format
         self.last_kwargs = kwargs
         return FakeResponse(
-            {
-                "meals": [
-                    {"original": "Milk", "substitution": "Soy milk"},
-                    {"original": "Cheese", "substitution": "Vegan cheese"},
-                ]
-            }
+            [
+                {"original": "Yogurt", "substitution": "Coconut yogurt"},
+            ]
         )
 
 
@@ -59,6 +71,25 @@ class OpenAIServiceTests(unittest.TestCase):
         self.assertIsNotNone(request_kwargs)
         self.assertEqual(request_kwargs.get("max_output_tokens"), 4000)
         self.assertNotIn("max_completion_tokens", request_kwargs)
+        self.assertIsInstance(request_kwargs.get("response_format"), dict)
+
+    def test_falls_back_when_response_format_not_supported(self):
+        class ClientWithoutSchema:
+            def __init__(self):
+                self.responses = FakeResponsesWithoutSchema()
+
+        fake_client = ClientWithoutSchema()
+
+        with patch.object(openai_service, "client", fake_client):
+            substitutions = openai_service.get_batch_ai_substitutions(
+                ["Yogurt snack"], ["Dairy"]
+            )
+
+        self.assertEqual(len(substitutions), 1)
+        self.assertEqual(substitutions[0].get("Yogurt"), "Coconut yogurt")
+
+        # Ensure the request didn't include response_format in this SDK shape
+        self.assertNotIn("response_format", fake_client.responses.last_kwargs)
 
 
 if __name__ == "__main__":

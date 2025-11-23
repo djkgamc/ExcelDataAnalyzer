@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import inspect
 from openai import OpenAI
 from typing import Dict, List, Union
 
@@ -91,24 +92,22 @@ Turkey & Cheese sandwich with Egg patty sandwich (Vegetarian)
 **** IMPORTANT: Copy the EXACT text of the original ingredient with any typos or abbreviations preserved in the response ****
 Do not auto-correct or fix spelling errors in the original ingredients.
 
-Important: Respond with a JSON object in this format ONLY: 
-{{
-  "meals": [
-    {{
-      "original": "original_ingredient_1",
-      "substitution": "replacement_1"
-    }},
-    {{
-      "original": "original_ingredient_2",
-      "substitution": "replacement_2"
-    }}
-  ]
-}}
+Important: Respond with a JSON array ONLY. Each element must be an object with the exact keys
+"original" and "substitution". Do not wrap this array inside another object. Do not nest objects or arrays
+any further. For example:
+[
+  {{
+    "original": "original_ingredient_1",
+    "substitution": "replacement_1"
+  }},
+  {{
+    "original": "original_ingredient_2",
+    "substitution": "replacement_2"
+  }}
+]
 
 Only include ingredients that need to be substituted due to containing the SPECIFIC allergens listed.
-Always use 'meals' as the key (not 'meal').
 Always return a direct mapping from original ingredient to replacement.
-Do not use nested objects or arrays for the substitutions.
 """
 
     print("\n=== OpenAI API Request ===")
@@ -116,27 +115,20 @@ Do not use nested objects or arrays for the substitutions.
     print(f"Model: {MODEL_NAME}")
 
     schema = {
-        "type": "object",
-        "properties": {
-            "meals": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "original": {
-                            "type": "string"
-                        },
-                        "substitution": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["original", "substitution"],
-                    "additionalProperties": False
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "original": {
+                    "type": "string"
+                },
+                "substitution": {
+                    "type": "string"
                 }
-            }
-        },
-        "required": ["meals"],
-        "additionalProperties": False
+            },
+            "required": ["original", "substitution"],
+            "additionalProperties": False
+        }
     }
 
     def create_openai_request():
@@ -148,25 +140,42 @@ Do not use nested objects or arrays for the substitutions.
                 "Please upgrade the 'openai' package (>=1.57.0) so client.responses is available."
             )
 
-        return client.responses.create(
-            model=MODEL_NAME,
-            max_output_tokens=4000,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "substitutions",
-                    "schema": schema,
-                    "strict": True,
-                },
-            },
-            input=[
+        request_kwargs = {
+            "model": MODEL_NAME,
+            "max_output_tokens": 4000,
+            "input": [
                 {
                     "role": "system",
                     "content": "You are a dietary safety expert specializing in preventing severe allergic reactions in children. Your suggestions must be extremely cautious and prioritize safety above all else. ONLY suggest substitutions for SPECIFICALLY LISTED allergens. DO NOT substitute ingredients for allergens that weren't explicitly mentioned. For example, if only 'Fish' is listed as an allergen, do NOT replace dairy or gluten ingredients.\nKnow the hidden allergens: Eggs are in pancakes, waffles, muffins, and most baked goods. Dairy is in all cheese, milk, yogurt, and butter. Fish includes tuna and all seafood. Gluten is in all wheat, bread, pasta, and cereals.",
                 },
                 {"role": "user", "content": prompt},
             ],
-        )
+        }
+
+        # Older releases of the Responses API did not accept response_format. Detect
+        # support dynamically to avoid runtime TypeErrors while still using the
+        # schema when available.
+        create_params = inspect.signature(client.responses.create).parameters
+        if "response_format" in create_params:
+            request_kwargs["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "substitutions",
+                    "schema": schema,
+                    "strict": True,
+                },
+            }
+
+        try:
+            return client.responses.create(**request_kwargs)
+        except TypeError as exc:
+            if "response_format" in request_kwargs:
+                # Retry without the schema parameter for environments running an
+                # older SDK shape, but keep the strict JSON instructions in the
+                # prompt so we still get structured output.
+                request_kwargs.pop("response_format", None)
+                return client.responses.create(**request_kwargs)
+            raise exc
 
     def extract_message_content(response) -> str:
         """Extract text content from a Responses API payload."""
@@ -228,30 +237,37 @@ Do not use nested objects or arrays for the substitutions.
 
             substitutions_list = []
 
-            if isinstance(response_json, dict) and 'meals' in response_json:
-                meals_array = response_json['meals']
-                print(f"MEALS ARRAY FROM API: {meals_array}")
+            # Expect a top-level array of substitution objects
+            if isinstance(response_json, list):
+                substitutions_list = [
+                    item
+                    for item in response_json
+                    if isinstance(item, dict)
+                    and "original" in item
+                    and "substitution" in item
+                ]
 
-                substitutions_list = []
-                for meal in meals_array:
-                    if isinstance(
-                            meal, dict
-                    ) and 'original' in meal and 'substitution' in meal:
-                        substitutions_list.append(meal)
+            # If the model wrapped the array in an object, try to unwrap common
+            # variants gracefully without causing runtime errors.
+            elif isinstance(response_json, dict):
+                for key in ("meals", "substitutions", "items"):
+                    possible_list = response_json.get(key)
+                    if isinstance(possible_list, list):
+                        substitutions_list = [
+                            item
+                            for item in possible_list
+                            if isinstance(item, dict)
+                            and "original" in item
+                            and "substitution" in item
+                        ]
+                        break
 
-                while len(substitutions_list) < len(meal_descriptions):
-                    substitutions_list.append({})
-
-                print(f"FINAL SUBSTITUTIONS LIST: {substitutions_list}")
-
-            else:
-                substitutions_list = [{}
-                                      for _ in range(len(meal_descriptions))]
+            print(f"FINAL SUBSTITUTIONS LIST: {substitutions_list}")
 
             formatted_substitutions_dict = {
-                item['original']: item['substitution']
+                item["original"]: item["substitution"]
                 for item in substitutions_list
-                if 'original' in item and 'substitution' in item
+                if "original" in item and "substitution" in item
             }
             print(
                 f"FORMATTED SUBSTITUTIONS LIST: {formatted_substitutions_dict}"
