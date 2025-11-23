@@ -12,6 +12,8 @@ if not api_key:
 
 client = OpenAI(api_key=api_key)
 
+MODEL_NAME = "gpt-5-nano"
+
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 
@@ -111,7 +113,7 @@ Do not use nested objects or arrays for the substitutions.
 
     print("\n=== OpenAI API Request ===")
     print("Prompt:", prompt)
-    print("Model: o4-mini")
+    print(f"Model: {MODEL_NAME}")
 
     schema = {
         "type": "object",
@@ -141,20 +143,24 @@ Do not use nested objects or arrays for the substitutions.
     retry_count = 0
     while retry_count < MAX_RETRIES:
         try:
-            response = client.responses.create(
-                model="o4-mini",
-                max_output_tokens=16000,
-                instructions=
-                "You are a dietary safety expert specializing in preventing severe allergic reactions in children. Your suggestions must be extremely cautious and prioritize safety above all else. ONLY suggest substitutions for SPECIFICALLY LISTED allergens. DO NOT substitute ingredients for allergens that weren't explicitly mentioned. For example, if only 'Fish' is listed as an allergen, do NOT replace dairy or gluten ingredients.\nKnow the hidden allergens: Eggs are in pancakes, waffles, muffins, and most baked goods. Dairy is in all cheese, milk, yogurt, and butter. Fish includes tuna and all seafood. Gluten is in all wheat, bread, pasta, and cereals.",
-                input=prompt,
-                text={
-                    "format": {
-                        "type": "json_schema",
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                max_tokens=4000,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
                         "name": "substitutions",
                         "schema": schema,
-                        "strict": True
-                    }
+                        "strict": True,
+                    },
                 },
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a dietary safety expert specializing in preventing severe allergic reactions in children. Your suggestions must be extremely cautious and prioritize safety above all else. ONLY suggest substitutions for SPECIFICALLY LISTED allergens. DO NOT substitute ingredients for allergens that weren't explicitly mentioned. For example, if only 'Fish' is listed as an allergen, do NOT replace dairy or gluten ingredients.\nKnow the hidden allergens: Eggs are in pancakes, waffles, muffins, and most baked goods. Dairy is in all cheese, milk, yogurt, and butter. Fish includes tuna and all seafood. Gluten is in all wheat, bread, pasta, and cereals.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
             )
             break
         except Exception as e:
@@ -180,10 +186,12 @@ Do not use nested objects or arrays for the substitutions.
 
     try:
         print("\n=== OpenAI API Response ===")
-        print(response.output_text)
+        message_content = response.choices[0].message.content if response.choices else ""
+        message_content = message_content or ""
+        print(message_content)
         print("===========================================\n")
         try:
-            response_json = json.loads(response.output_text)
+            response_json = json.loads(message_content)
 
             substitutions_list = []
 
