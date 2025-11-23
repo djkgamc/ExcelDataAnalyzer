@@ -177,6 +177,22 @@ Always return a direct mapping from original ingredient to replacement.
                 return client.responses.create(**request_kwargs)
             raise exc
 
+    def _coerce_json_value(value):
+        """Convert a Responses json payload (value or callable) into a JSON string."""
+
+        if callable(value):
+            try:
+                value = value()
+            except TypeError:
+                value = value({})
+
+        if isinstance(value, (dict, list, str, int, float, bool)) or value is None:
+            return json.dumps(value)
+
+        # Fallback to string conversion for any other objects (avoids TypeError for
+        # methods or SDK-specific wrappers that aren't directly serializable).
+        return json.dumps(str(value))
+
     def extract_message_content(response) -> str:
         """Extract text content from a Responses API payload."""
 
@@ -192,11 +208,11 @@ Always return a direct mapping from original ingredient to replacement.
                     if getattr(content_part, "text", None):
                         return content_part.text or ""
                     if getattr(content_part, "json", None) is not None:
-                        return json.dumps(content_part.json)
+                        return _coerce_json_value(content_part.json)
             if getattr(output_entry, "text", None):
                 return output_entry.text or ""
             if getattr(output_entry, "json", None) is not None:
-                return json.dumps(output_entry.json)
+                return _coerce_json_value(output_entry.json)
         return ""
 
     response = None

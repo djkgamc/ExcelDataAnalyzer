@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 
@@ -90,6 +91,31 @@ class OpenAIServiceTests(unittest.TestCase):
 
         # Ensure the request didn't include response_format in this SDK shape
         self.assertNotIn("response_format", fake_client.responses.last_kwargs)
+
+
+class LiveOpenAIIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(
+        os.getenv("OPENAI_API_KEY"), "OPENAI_API_KEY is required for live OpenAI call"
+    )
+    def test_live_call_returns_substitutions(self):
+        # Ensure we are exercising the real client (Responses API, not completions)
+        self.assertIsNotNone(openai_service.client)
+        self.assertTrue(hasattr(openai_service.client, "responses"))
+
+        substitutions = openai_service.get_batch_ai_substitutions(
+            ["Breakfast: milk, cheese toast, and yogurt parfait"],
+            ["Dairy"],
+            {"Milk": "Oat milk"},
+        )
+
+        self.assertEqual(len(substitutions), 1)
+        mapping = substitutions[0]
+        self.assertIsInstance(mapping, dict)
+        self.assertGreater(len(mapping), 0)
+
+        key, value = next(iter(mapping.items()))
+        self.assertIsInstance(key, str)
+        self.assertIsInstance(value, str)
 
 
 if __name__ == "__main__":

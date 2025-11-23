@@ -119,11 +119,11 @@ def main():
 
             # Show original menu preview
             st.subheader("Original Menu Preview")
-            st.dataframe(processor.original_df, use_container_width=True)
+            st.dataframe(processor.original_df, width=1200)
 
             # Add Run button
             st.markdown("---")
-            run_button = st.button("🚀 Run Conversion", type="primary", use_container_width=True)
+            run_button = st.button("🚀 Run Conversion", type="primary", width=300)
 
             # Only process when Run button is clicked
             if run_button:
@@ -156,11 +156,11 @@ def main():
 
                 with col1:
                     st.subheader("Original Menu")
-                    st.dataframe(results['original_df'], use_container_width=True)
+                    st.dataframe(results['original_df'], width=1200)
 
                 with col2:
                     st.subheader("Allergen-Free Menu")
-                    st.dataframe(results['modified_df'], use_container_width=True)
+                    st.dataframe(results['modified_df'], width=1200)
 
                 # Display changes
                 summary = results.get('summary', {})
@@ -199,7 +199,7 @@ def main():
                     file_name="modified_menu.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     on_click=show_confetti,
-                    use_container_width=True
+                    width=320
                 )
 
         except Exception as e:
