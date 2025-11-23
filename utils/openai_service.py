@@ -150,7 +150,7 @@ Do not use nested objects or arrays for the substitutions.
 
         return client.responses.create(
             model=MODEL_NAME,
-            max_completion_tokens=4000,
+            max_output_tokens=4000,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
