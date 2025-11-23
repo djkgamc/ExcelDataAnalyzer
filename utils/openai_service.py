@@ -2,8 +2,10 @@ import os
 import json
 import time
 import inspect
-from openai import OpenAI
 from typing import Dict, List, Optional
+
+import httpx
+from openai import OpenAI
 
 _client_cache = None
 _client_api_key = None
@@ -54,9 +56,40 @@ def get_openai_client() -> OpenAI:
     if _client_cache is not None and api_key == _client_api_key:
         return _client_cache
 
-    _client_cache = OpenAI(api_key=api_key)
+    base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")
+
+    client_kwargs = {"api_key": api_key}
+    if base_url:
+        client_kwargs["base_url"] = base_url
+
+    http_client = build_http_client()
+    if http_client:
+        client_kwargs["http_client"] = http_client
+
+    _client_cache = OpenAI(**client_kwargs)
     _client_api_key = api_key
     return _client_cache
+
+
+def build_http_client() -> Optional[httpx.Client]:
+    """Create an httpx client that honors optional proxy overrides."""
+
+    # Allow explicit disabling of proxies when they block outbound calls.
+    if os.environ.get("OPENAI_DISABLE_PROXY", "").lower() in {"1", "true", "yes"}:
+        proxies = None
+    else:
+        proxies = (
+            os.environ.get("OPENAI_HTTP_PROXY")
+            or os.environ.get("OPENAI_HTTPS_PROXY")
+            or os.environ.get("HTTPS_PROXY")
+            or os.environ.get("HTTP_PROXY")
+        )
+
+    try:
+        return httpx.Client(proxies=proxies, transport=httpx.HTTPTransport(retries=2))
+    except Exception:
+        # If proxy configuration is invalid, fall back to default client behavior.
+        return None
 
 
 def get_batch_ai_substitutions(
