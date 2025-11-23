@@ -260,23 +260,79 @@ Always return a direct mapping from original ingredient to replacement.
     def extract_message_content(response) -> str:
         """Extract text content from a Responses API payload."""
 
-        if response and getattr(response, "output", None):
-            output_items = response.output or []
-            output_entry = output_items[0] if output_items else None
-        else:
-            output_entry = None
+        collected_parts: List[str] = []
 
-        if output_entry:
-            if getattr(output_entry, "content", None):
-                for content_part in output_entry.content:
-                    if getattr(content_part, "text", None):
-                        return content_part.text or ""
-                    if getattr(content_part, "json", None) is not None:
-                        return _coerce_json_value(content_part.json)
+        def add_part(value):
+            if value is None:
+                return
+            if isinstance(value, (dict, list, str, int, float, bool)):
+                text_value = value if isinstance(value, str) else json.dumps(value)
+            else:
+                text_value = str(value)
+            if text_value:
+                collected_parts.append(text_value)
+
+        if response is None:
+            return ""
+
+        # Prefer any aggregated helpers the SDK provides.
+        if getattr(response, "output_text", None):
+            add_part(response.output_text)
+
+        outputs = getattr(response, "output", None) or []
+        for output_entry in outputs:
+            if getattr(output_entry, "output_text", None):
+                add_part(output_entry.output_text)
+
+            contents = getattr(output_entry, "content", None) or []
+            for content_part in contents:
+                if getattr(content_part, "text", None):
+                    add_part(content_part.text)
+                if getattr(content_part, "json", None) is not None:
+                    add_part(_coerce_json_value(content_part.json))
+                if getattr(content_part, "output_text", None):
+                    add_part(content_part.output_text)
+
+                reasoning_part = getattr(content_part, "reasoning", None)
+                if reasoning_part is not None:
+                    if getattr(reasoning_part, "output_text", None):
+                        add_part(reasoning_part.output_text)
+                    elif getattr(reasoning_part, "text", None):
+                        add_part(reasoning_part.text)
+                    else:
+                        try:
+                            add_part(_coerce_json_value(reasoning_part))
+                        except Exception:
+                            pass
+
             if getattr(output_entry, "text", None):
-                return output_entry.text or ""
+                add_part(output_entry.text)
             if getattr(output_entry, "json", None) is not None:
-                return _coerce_json_value(output_entry.json)
+                add_part(_coerce_json_value(output_entry.json))
+
+        if collected_parts:
+            return "\n".join(collected_parts)
+
+        # As a last resort, attempt to serialize the whole response for debugging.
+        for attr_name in ("model_dump", "to_dict", "dict"):
+            attr = getattr(response, attr_name, None)
+            if callable(attr):
+                try:
+                    data = attr()
+                except TypeError:
+                    try:
+                        data = attr({})
+                    except Exception:
+                        continue
+                try:
+                    return json.dumps(data)
+                except Exception:
+                    continue
+        if hasattr(response, "__dict__"):
+            try:
+                return json.dumps(response.__dict__)
+            except Exception:
+                pass
         return ""
 
     response = None

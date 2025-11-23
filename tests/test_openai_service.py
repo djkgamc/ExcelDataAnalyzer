@@ -52,6 +52,35 @@ class FakeResponsesWithoutSchema:
         )
 
 
+class FakeReasoningBlock:
+    def __init__(self, output_text):
+        self.type = "reasoning"
+        self.content = None
+        self.encrypted_content = None
+        self.status = None
+        self.output_text = output_text
+
+
+class FakeReasoningContent:
+    def __init__(self, output_text):
+        self.text = None
+        self.json = None
+        self.output_text = None
+        self.reasoning = FakeReasoningBlock(output_text)
+
+
+class FakeReasoningOutput:
+    def __init__(self, output_text):
+        self.content = [FakeReasoningContent(output_text)]
+        self.output_text = None
+
+
+class FakeReasoningResponse:
+    def __init__(self, output_text):
+        self.output = [FakeReasoningOutput(output_text)]
+        self.output_text = None
+
+
 class FakeClient:
     def __init__(self):
         self.responses = FakeResponsesClient()
@@ -94,6 +123,27 @@ class OpenAIServiceTests(unittest.TestCase):
 
         # Ensure the request didn't include response_format in this SDK shape
         self.assertNotIn("response_format", fake_client.responses.last_kwargs)
+
+    def test_reasoning_output_is_unwrapped(self):
+        class ClientWithReasoning:
+            def __init__(self, output_text):
+                self.responses = self
+                self._output_text = output_text
+
+            def create(self, **kwargs):
+                self.last_kwargs = kwargs
+                return FakeReasoningResponse(self._output_text)
+
+        output_text = "[{\"original\": \"Milk\", \"substitution\": \"Oat milk\"}]"
+        fake_client = ClientWithReasoning(output_text)
+
+        with patch.object(openai_service, "get_openai_client", return_value=fake_client):
+            substitutions = openai_service.get_batch_ai_substitutions(
+                ["Breakfast"], ["Dairy"]
+            )
+
+        self.assertEqual(len(substitutions), 1)
+        self.assertEqual(substitutions[0].get("Milk"), "Oat milk")
 
 
 class LiveOpenAIIntegrationTests(unittest.TestCase):
