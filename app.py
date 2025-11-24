@@ -7,6 +7,7 @@ from utils.confetti import show_confetti
 from utils.excel_exporter import export_to_excel
 from typing import Generator
 import hashlib
+import streamlit.components.v1 as components
 
 # Initialize database
 init_db()
@@ -130,13 +131,21 @@ def main():
                 
                 # Accumulate reasoning text for display
                 accumulated_reasoning = [""]
+                saw_json_marker = [False]
                 
                 def update_reasoning(chunk: str):
                     """Callback to update reasoning display with new chunks in real-time"""
                     if chunk:
+                        # If we've already hit the JSON marker, ignore further chunks for the reasoning box
+                        if saw_json_marker[0]:
+                            return
                         accumulated_reasoning[0] += chunk
+                        # Stop updating the reasoning box once the JSON marker appears
+                        if "===JSON===" in accumulated_reasoning[0]:
+                            saw_json_marker[0] = True
+                            accumulated_reasoning[0] = accumulated_reasoning[0].split("===JSON===")[0].rstrip()
                         # Update the placeholder with st.text() for real-time streaming
-                        reasoning_display.text(accumulated_reasoning[0])
+                        reasoning_display.text(accumulated_reasoning[0] if accumulated_reasoning[0] else "...")
                 
                 with st.spinner("Processing your menu..."):
                     # Get custom substitution rules with database access
@@ -171,6 +180,39 @@ def main():
                     # Show confetti for successful processing
                     if changes:
                         show_confetti()
+                    # Play a short sound and show a notification in the browser
+                    try:
+                        components.html("""
+<script>
+(function(){
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.25);
+    o.stop(ctx.currentTime+0.3);
+  } catch(e){}
+  try {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification("Allergen substitutions ready");
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(p=>{
+          if (p==="granted"){ new Notification("Allergen substitutions ready"); }
+        });
+      }
+    }
+  } catch(e){}
+})();
+</script>
+""", height=0)
+                    except Exception:
+                        pass
 
             # Display results if they exist in session state
             if st.session_state.processed_results:

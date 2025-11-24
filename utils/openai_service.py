@@ -189,7 +189,7 @@ def get_batch_ai_substitutions(
             ],
             "substitution_style": {
                 "must_be_short_menu_label": True,
-                "max_words": 5,
+                "max_words": 8,
                 "forbid_sentences_or_instructions": True,
                 "forbid_phrases": ["instead of", "served with", "serve with", "prepared", "using", "over"],
                 "forbid_ids_in_text": ["ing_"],
@@ -226,15 +226,11 @@ def get_batch_ai_substitutions(
             "notes": [
                 "Return ONLY items that contain the SPECIFIC listed allergens.",
                 "Select only from provided ingredients by id (the 'id' field).",
-                "The 'substitution' must be a menu-ready ingredient name or dish label (e.g., 'Soy milk', 'Fresh fruit', 'Brown rice', 'Gluten-free bread').",
+                "The 'substitution' must be a concise, menu-ready name (e.g., 'Soy milk', 'Fresh fruit', 'Brown rice', 'Gluten-free bread').",
                 "Do NOT include sentences, 'instead of', serving instructions, commas/periods, or any (ing_XX) references inside 'substitution'.",
-                # "You MAY include an optional 'original' field to echo the human-readable ingredient name, but final decisions are keyed by 'id'.",
-                # "Allowed examples:",
-                # "[{\"id\":\"ing_14\",\"original\":\"WGR Kix cereal\",\"substitution\":\"Rice Chex\"},{\"id\":\"ing_23\",\"substitution\":\"Brown rice\"}]",
-                # "Disallowed examples:",
-                # "[{\"id\":\"ing_2\",\"substitution\":\"WGR Cheerios (ing_30) served with fruit\"}]",
-                "Your output MUST be a single JSON array only. The very first character must be '[' and the very last character must be ']'.",
-                "Do NOT emit any other JSON objects (e.g., {\"error\": ...}) or any text before or after the array.",
+                "You may stream a few short progress lines first.",
+                "When you are ready to answer, print exactly the single line: ===JSON===",
+                "Immediately after that line, output ONE JSON array and NOTHING ELSE after the closing ']'.",
                 "If there are no substitutions, output [] and NOTHING ELSE.",
             ],
         },
@@ -242,10 +238,13 @@ def get_batch_ai_substitutions(
 
     prompt = (
         "Analyze the ingredient list and propose safe allergen-free substitutions for a school cafeteria. "
-        "Follow all safety and constraint rules. Respond with ONLY a single JSON array of objects "
-        'with keys {"id","substitution"} and optionally {"original"}. No additional text.\n'
-        "The array MUST be the only thing in your response. If none apply, return [].\n"
-        "Example:\n"
+        "Follow all safety and constraint rules.\n"
+        "1) Stream a few short progress lines as you think.\n"
+        "2) Then print exactly the line ===JSON===\n"
+        "3) Then output ONLY a single JSON array of objects with keys {\"id\",\"substitution\"} and optionally {\"original\"}. "
+        "Keep each substitution ≤ 8 words, no sentences/instructions.\n"
+        "If none apply, output [] after the marker.\n"
+        "Example after the marker:\n"
         "[{\"id\":\"ing_1\",\"original\":\"Milk\",\"substitution\":\"Soy milk\"},{\"id\":\"ing_23\",\"substitution\":\"Brown rice\"}]\n\n"
         f"DATA:\n{json.dumps(prompt_payload, ensure_ascii=False)}"
     )
@@ -278,7 +277,7 @@ def get_batch_ai_substitutions(
                 },
                 {"role": "user", "content": prompt},
             ],
-            reasoning={"effort": "medium"},
+            reasoning={"effort": "medium", "summary": "auto"},
             stream=True,  # Enable streaming to show reasoning in real-time
         )
 
