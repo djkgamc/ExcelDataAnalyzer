@@ -31,7 +31,12 @@ def create_rich_text_cell(original_text: str, substitutions: List[Tuple[str, str
     replacement_positions = []
     
     # Find all replacement positions in the current text
-    for original, replacement in substitutions:
+    for substitution_tuple in substitutions:
+        # Handle both old format (original, replacement) and new format (original, replacement, meal_type)
+        if len(substitution_tuple) == 3:
+            original, replacement, _ = substitution_tuple
+        else:
+            original, replacement = substitution_tuple
         # Find all occurrences of the replacement text (case-insensitive)
         pattern = re.compile(re.escape(replacement), re.IGNORECASE)
         for match in pattern.finditer(current_text):

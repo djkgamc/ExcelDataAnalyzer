@@ -117,22 +117,47 @@ def main():
             # Initialize processor with raw content
             processor = MenuProcessor(content_bytes)
 
-            # Show original menu preview
-            st.subheader("Original Menu Preview")
-            st.dataframe(processor.original_df, width=1200)
-
             # Add Run button
             st.markdown("---")
             run_button = st.button("🚀 Run Conversion", type="primary", width=300)
 
             # Only process when Run button is clicked
             if run_button:
+                # Create placeholder for reasoning text display
+                st.markdown("**AI Reasoning:**")
+                reasoning_display = st.empty()
+                reasoning_display.text("Waiting for AI to start reasoning...")
+                
+                # Accumulate reasoning text for display
+                accumulated_reasoning = [""]
+                
+                def update_reasoning(chunk: str):
+                    """Callback to update reasoning display with new chunks in real-time"""
+                    if chunk:
+                        accumulated_reasoning[0] += chunk
+                        # Update the placeholder with st.text() for real-time streaming
+                        reasoning_display.text(accumulated_reasoning[0])
+                
                 with st.spinner("Processing your menu..."):
                     # Get custom substitution rules with database access
                     custom_rules = get_substitution_rules(allergens, db)
 
                     # Process menu with both custom rules and allergens for AI processing
-                    modified_df, changes, summary = processor.convert_menu(custom_rules, allergens)
+                    # Pass progress callback for streaming reasoning
+                    modified_df, changes, summary = processor.convert_menu(
+                        custom_rules, allergens, progress_callback=update_reasoning
+                    )
+                
+                # Final update - convert to text area for better readability after completion
+                if accumulated_reasoning[0]:
+                    reasoning_display.text_area(
+                        "Reasoning",
+                        value=accumulated_reasoning[0],
+                        height=200,
+                        disabled=True,
+                        label_visibility="collapsed",
+                        key="reasoning_display_final"
+                    )
 
                     # Store results in session state including the processor for Excel export
                     st.session_state.processed_results = {
@@ -151,24 +176,13 @@ def main():
             if st.session_state.processed_results:
                 results = st.session_state.processed_results
                 
-                # Display original and modified menus side by side
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.subheader("Original Menu")
-                    st.dataframe(results['original_df'], width=1200)
-
-                with col2:
-                    st.subheader("Allergen-Free Menu")
-                    st.dataframe(results['modified_df'], width=1200)
-
-                # Display changes
+                # Display substitutions list
                 summary = results.get('summary', {})
                 replaced_meals = summary.get('replaced', [])
                 unreplaced_meals = summary.get('unreplaced', [])
 
                 if replaced_meals:
-                    st.subheader("Replaced meals")
+                    st.subheader("Substitutions Made")
                     for item in replaced_meals:
                         st.success(
                             f"Week {item['week']} {item['day']} ({item['meal_type']}): "

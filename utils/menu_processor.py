@@ -109,9 +109,15 @@ class MenuProcessor:
         return "Meal"
 
     def convert_menu(
-        self, custom_rules: Dict[str, str], allergens: List[str]
+        self, custom_rules: Dict[str, str], allergens: List[str], progress_callback=None
     ) -> Tuple[pd.DataFrame, List[str], Dict[str, List[Dict[str, str]]]]:
-        """Convert the menu using custom rules and AI-powered substitutions."""
+        """Convert the menu using custom rules and AI-powered substitutions.
+        
+        Args:
+            custom_rules: Dictionary of custom substitution rules
+            allergens: List of allergens to avoid
+            progress_callback: Optional callback function(text: str) for streaming updates
+        """
         modified_df = self.original_df.copy()
         self.substitution_map = {}
 
@@ -142,7 +148,7 @@ class MenuProcessor:
         if allergens and cell_contents:
             from utils.openai_service import get_batch_ai_substitutions
             all_substitutions_list = get_batch_ai_substitutions(
-                cell_contents, allergens, custom_rules
+                cell_contents, allergens, custom_rules, progress_callback=progress_callback
             )
             if all_substitutions_list and len(all_substitutions_list) > 0:
                 ai_substitutions = all_substitutions_list[0] or {}
@@ -155,7 +161,7 @@ class MenuProcessor:
             all_substitutions = {**ai_substitutions, **custom_rules}
 
             new_content, cell_changes = self._apply_substitutions_to_cell(
-                original_content, all_substitutions, row_idx, col_idx
+                original_content, all_substitutions, row_idx, col_idx, cell["meal_parts"]
             )
 
             modified_df.iloc[row_idx, col_idx] = new_content
@@ -164,20 +170,31 @@ class MenuProcessor:
             substitutions_made = self.get_substitutions_for_cell(row_idx, col_idx)
             if substitutions_made:
                 replaced_meal_types: Set[str] = set()
-                for original, replacement in substitutions_made:
-                    meal_type = self._identify_meal_type(
-                        original, cell["meal_parts"]
-                    )
+                # Deduplicate substitutions: track unique (original, replacement) pairs per meal type
+                seen_substitutions: Set[Tuple[str, str, str]] = set()
+                for substitution_tuple in substitutions_made:
+                    # Handle both old format (original, replacement) and new format (original, replacement, meal_type)
+                    if len(substitution_tuple) == 3:
+                        original, replacement, meal_type = substitution_tuple
+                    else:
+                        original, replacement = substitution_tuple
+                        # Fallback to old identification method if meal_type not stored
+                        meal_type = self._identify_meal_type(original, cell["meal_parts"])
+                    
                     replaced_meal_types.add(meal_type)
-                    replaced_meals.append(
-                        {
-                            "week": cell["week"],
-                            "day": cell["day"],
-                            "meal_type": meal_type,
-                            "original": original,
-                            "replacement": replacement,
-                        }
-                    )
+                    # Only log if we haven't seen this exact substitution for this meal type in this cell
+                    substitution_key = (meal_type, original.lower(), replacement.lower())
+                    if substitution_key not in seen_substitutions:
+                        seen_substitutions.add(substitution_key)
+                        replaced_meals.append(
+                            {
+                                "week": cell["week"],
+                                "day": cell["day"],
+                                "meal_type": meal_type,
+                                "original": original,
+                                "replacement": replacement,
+                            }
+                        )
                 for meal_key, meal_text in cell["meal_parts"].items():
                     meal_label = MEAL_LABELS.get(meal_key, "Meal")
                     if meal_label not in replaced_meal_types:
@@ -210,7 +227,8 @@ class MenuProcessor:
         content: str, 
         substitutions: Dict[str, str],
         row_idx: int,
-        col_idx: int
+        col_idx: int,
+        meal_parts: Dict[str, str]
     ) -> Tuple[str, Set[str]]:
         """Apply substitutions to a single cell and track what changed"""
         new_content = content
@@ -219,6 +237,21 @@ class MenuProcessor:
         
         # Track all replacements with markers to avoid nested replacements
         replacements_to_apply = []
+        
+        # Build a map of character positions to meal types
+        meal_type_map = {}
+        for meal_key, meal_text in meal_parts.items():
+            # Find the position of this meal marker (B:, L:, S:)
+            marker_pattern = re.compile(rf"{meal_key}\s*:\s*", re.IGNORECASE)
+            for marker_match in marker_pattern.finditer(content):
+                start_pos = marker_match.end()
+                # Find where this meal section ends (either next meal marker or end of content)
+                next_marker_pattern = re.compile(rf"[BLS]\s*:\s*", re.IGNORECASE)
+                next_match = next_marker_pattern.search(content, start_pos)
+                end_pos = next_match.start() if next_match else len(content)
+                # Mark all characters in this meal section
+                for pos in range(start_pos, end_pos):
+                    meal_type_map[pos] = MEAL_LABELS.get(meal_key, "Meal")
         
         for original, replacement in substitutions.items():
             if not original or not replacement:
@@ -234,10 +267,22 @@ class MenuProcessor:
             
             for match in matches:
                 matched_text = match.group(0)
+                start_pos = match.start()
+                
+                # Determine which meal type this occurrence belongs to
+                meal_type = meal_type_map.get(start_pos, "Meal")
+                # If exact position not found, try nearby positions
+                if meal_type == "Meal":
+                    for offset in range(max(0, start_pos - 10), min(len(content), start_pos + len(matched_text) + 10)):
+                        if offset in meal_type_map:
+                            meal_type = meal_type_map[offset]
+                            break
+                
                 marker = f"__MARKER_{len(replacements_to_apply)}__"
                 replacements_to_apply.append((matched_text, replacement, marker))
                 changes.add(f"Changed '{matched_text}' to '{replacement}'")
-                cell_substitutions.append((matched_text, replacement))
+                # Store with meal type: (original, replacement, meal_type)
+                cell_substitutions.append((matched_text, replacement, meal_type))
         
         # Apply markers
         temp_content = new_content
@@ -256,6 +301,9 @@ class MenuProcessor:
         
         return new_content, changes
 
-    def get_substitutions_for_cell(self, row_idx: int, col_idx: int) -> List[Tuple[str, str]]:
-        """Get list of substitutions made in a specific cell"""
+    def get_substitutions_for_cell(self, row_idx: int, col_idx: int) -> List[Tuple[str, ...]]:
+        """Get list of substitutions made in a specific cell.
+        
+        Returns list of tuples: (original, replacement) or (original, replacement, meal_type)
+        """
         return self.substitution_map.get((row_idx, col_idx), [])
