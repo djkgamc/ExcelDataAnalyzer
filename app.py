@@ -6,8 +6,8 @@ from utils.database import init_db, get_db, SubstitutionRule
 from utils.confetti import show_confetti
 from utils.excel_exporter import export_to_excel
 from typing import Generator
-import io
 import hashlib
+import streamlit.components.v1 as components
 
 # Initialize database
 init_db()
@@ -95,78 +95,153 @@ def main():
 
     # File upload
     uploaded_file = st.file_uploader(
-        "Upload your menu file (CSV format)",
-        type=["csv", "txt"]
+        "Upload your menu file (Excel format)",
+        type=["xlsm", "xlsx", "xls"]
     )
 
     if uploaded_file:
         try:
             # Read the file content
-            content = uploaded_file.getvalue().decode('utf-8')
-            
+            content_bytes = uploaded_file.getvalue()
+
             # Calculate hash of file content to detect changes
-            file_hash = hashlib.md5(content.encode()).hexdigest()
+            file_hash = hashlib.md5(content_bytes).hexdigest()
             
             # Check if this is a new file or settings changed - clear results if so
             allergens_tuple = tuple(sorted(allergens))
-            if (file_hash != st.session_state.current_file_hash or 
+            if (file_hash != st.session_state.current_file_hash or
                 allergens_tuple != st.session_state.current_allergens):
                 st.session_state.processed_results = None
                 st.session_state.current_file_hash = file_hash
                 st.session_state.current_allergens = allergens_tuple
 
             # Initialize processor with raw content
-            processor = MenuProcessor(content)
-
-            # Show original menu preview
-            st.subheader("Original Menu Preview")
-            st.dataframe(processor.original_df, use_container_width=True)
+            processor = MenuProcessor(content_bytes)
 
             # Add Run button
             st.markdown("---")
-            run_button = st.button("🚀 Run Conversion", type="primary", use_container_width=True)
+            run_button = st.button("🚀 Run Conversion", type="primary", width=300)
 
             # Only process when Run button is clicked
             if run_button:
+                # Create placeholder for reasoning text display
+                st.markdown("**AI Reasoning:**")
+                reasoning_display = st.empty()
+                reasoning_display.text("Waiting for AI to start reasoning...")
+                
+                # Accumulate reasoning text for display
+                accumulated_reasoning = [""]
+                saw_json_marker = [False]
+                
+                def update_reasoning(chunk: str):
+                    """Callback to update reasoning display with new chunks in real-time"""
+                    if chunk:
+                        # If we've already hit the JSON marker, ignore further chunks for the reasoning box
+                        if saw_json_marker[0]:
+                            return
+                        accumulated_reasoning[0] += chunk
+                        # Stop updating the reasoning box once the JSON marker appears
+                        if "===JSON===" in accumulated_reasoning[0]:
+                            saw_json_marker[0] = True
+                            accumulated_reasoning[0] = accumulated_reasoning[0].split("===JSON===")[0].rstrip()
+                        # Update the placeholder with st.text() for real-time streaming
+                        reasoning_display.text(accumulated_reasoning[0] if accumulated_reasoning[0] else "...")
+                
                 with st.spinner("Processing your menu..."):
                     # Get custom substitution rules with database access
                     custom_rules = get_substitution_rules(allergens, db)
 
                     # Process menu with both custom rules and allergens for AI processing
-                    modified_df, changes = processor.convert_menu(custom_rules, allergens)
-                    
+                    # Pass progress callback for streaming reasoning
+                    modified_df, changes, summary = processor.convert_menu(
+                        custom_rules, allergens, progress_callback=update_reasoning
+                    )
+                
+                # Final update - convert to text area for better readability after completion
+                if accumulated_reasoning[0]:
+                    reasoning_display.text_area(
+                        "Reasoning",
+                        value=accumulated_reasoning[0],
+                        height=200,
+                        disabled=True,
+                        label_visibility="collapsed",
+                        key="reasoning_display_final"
+                    )
+
                     # Store results in session state including the processor for Excel export
                     st.session_state.processed_results = {
                         'modified_df': modified_df,
                         'changes': changes,
                         'original_df': processor.original_df,
-                        'processor': processor
+                        'processor': processor,
+                        'summary': summary
                     }
                     
                     # Show confetti for successful processing
                     if changes:
                         show_confetti()
+                    # Play a short sound and show a notification in the browser
+                    try:
+                        components.html("""
+<script>
+(function(){
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.25);
+    o.stop(ctx.currentTime+0.3);
+  } catch(e){}
+  try {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification("Allergen substitutions ready");
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(p=>{
+          if (p==="granted"){ new Notification("Allergen substitutions ready"); }
+        });
+      }
+    }
+  } catch(e){}
+})();
+</script>
+""", height=0)
+                    except Exception:
+                        pass
 
             # Display results if they exist in session state
             if st.session_state.processed_results:
                 results = st.session_state.processed_results
                 
-                # Display original and modified menus side by side
-                col1, col2 = st.columns(2)
+                # Display substitutions list
+                summary = results.get('summary', {})
+                replaced_meals = summary.get('replaced', [])
+                unreplaced_meals = summary.get('unreplaced', [])
 
-                with col1:
-                    st.subheader("Original Menu")
-                    st.dataframe(results['original_df'], use_container_width=True)
+                if replaced_meals:
+                    st.subheader("Substitutions Made")
+                    for item in replaced_meals:
+                        st.success(
+                            f"Week {item['week']} {item['day']} ({item['meal_type']}): "
+                            f"{item['original']} → {item['replacement']}"
+                        )
 
-                with col2:
-                    st.subheader("Allergen-Free Menu")
-                    st.dataframe(results['modified_df'], use_container_width=True)
+                if unreplaced_meals:
+                    st.subheader("Unreplaced meals (no allergen conflicts)")
+                    for item in unreplaced_meals:
+                        st.info(
+                            f"Week {item['week']} {item['day']} ({item['meal_type']}): {item['text']}"
+                        )
 
-                # Display changes
                 if results['changes']:
-                    st.subheader("Changes Made")
+                    st.subheader("Raw change log")
                     for change in results['changes']:
-                        st.info(change)
+                        st.caption(change)
 
                 # Export options
                 st.subheader("Export Modified Menu")
@@ -180,7 +255,7 @@ def main():
                     file_name="modified_menu.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     on_click=show_confetti,
-                    use_container_width=True
+                    width=320
                 )
 
         except Exception as e:
@@ -193,26 +268,26 @@ def main():
         ### How to use this tool:
         1. Select the allergens you want to exclude using the sidebar
         2. Add custom substitution rules if needed
-        3. Upload your menu file (CSV format)
+        3. Upload your menu file (Excel format)
         4. Click the "Run Conversion" button to process
         5. Review the changes in the side-by-side view
         6. Download the Excel file with highlighted substitutions
 
         ### Menu File Format:
-        Your menu file should be in CSV format with:
-        - Rows representing days of the week (Monday-Friday)
-        - Columns representing weeks (Week 1-4)
-        - Each cell containing:
-          - B: (Breakfast items)
-          - L: (Lunch items)
-          - S: (Snack items)
+        Upload an Excel file that matches the provided `Menu_Allergy_Sub.xlsm` template:
+        - Columns for Week 1-4 along the top row
+        - Monday-Friday listed down the left side
+        - Each meal cell contains three labeled lines:
+          - `B:` for Breakfast
+          - `L:` for Lunch
+          - `S:` for Snack
 
         ### Supported Features:
         - Multiple allergen exclusions
         - Custom substitution rules
         - AI-powered substitution suggestions
         - Excel export with red highlighting for substituted ingredients
-        - Original CSV format preserved in output
+        - Original Excel-style layout preserved in output
         """)
 
 
